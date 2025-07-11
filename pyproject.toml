@@ -1,0 +1,7 @@
+[project]
+name = "aworld-runtime"
+version = "0.1.0"
+description = "Scaling Agent Training via Runtime Definitions and Parallelizations"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = []
