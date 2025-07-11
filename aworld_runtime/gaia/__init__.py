@@ -5,6 +5,7 @@ This package exposes the main collection classes from each service module, makin
 
 from .models import DocumentMetadata
 from .services import (
+    ActionArguments,
     ArxivCollection,
     AudioCollection,
     BrowserCollection,
@@ -30,6 +31,7 @@ from .services.sse_server import sse_cli
 
 __all__ = [
     "sse_cli",
+    "ActionArguments",
     "DocumentMetadata",
     "CSVCollection",
     "DOCXExtractionCollection",

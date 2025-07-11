@@ -7,7 +7,8 @@ import uvicorn
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from .gaia.services.sse_server import sse_cli as gaia_sse_cli
+from .gaia import ActionArguments
+from .gaia.services.sse_server import SSEServer
 from .logging_utils import setup_logger
 from .openrouter import openrouter_router
 
@@ -98,18 +99,16 @@ def gaia_mcp(
     if transport == "stdio" and port is not None:
         raise typer.BadParameter("--port should not be specified when --transport=stdio")
 
-    # This is a bit of a hack to make it work with the existing sse_cli
-    import sys
+    arguments = ActionArguments(
+        name=name,
+        transport=transport,
+        port=port,
+        workspace=workspace,
+        unittest=unittest,
+    )
 
-    sys.argv = ["aw-runtime", "--name", name, "--transport", transport]
-    if port:
-        sys.argv.extend(["--port", str(port)])
-    if workspace:
-        sys.argv.extend(["--workspace", workspace])
-    if unittest:
-        sys.argv.append("--unittest")
-
-    gaia_sse_cli()
+    server = SSEServer(arguments)
+    server.run()
 
 
 def main():
