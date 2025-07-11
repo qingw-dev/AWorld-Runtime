@@ -3,7 +3,6 @@
 This package exposes the main collection classes from each service module, making them easily accessible.
 """
 
-from .api import app
 from .models import DocumentMetadata
 from .services import (
     ArxivCollection,
@@ -27,9 +26,10 @@ from .services import (
     XLSXCollection,
     YouTubeCollection,
 )
+from .services.sse_server import sse_cli
 
 __all__ = [
-    "app",
+    "sse_cli",
     "DocumentMetadata",
     "CSVCollection",
     "DOCXExtractionCollection",

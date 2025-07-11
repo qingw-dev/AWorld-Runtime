@@ -1,7 +1,6 @@
 import asyncio
 import json
 import os
-import sys
 import time
 import traceback
 import zipfile
@@ -9,7 +8,6 @@ from pathlib import Path
 from typing import Any, Literal
 
 import pandas as pd
-import pyautogui
 from openpyxl import load_workbook
 from pydantic import Field
 from pydantic.fields import FieldInfo
@@ -73,52 +71,6 @@ class XLSXCollection(ActionCollection):
             )
 
         return path
-
-    async def _create_excel_screenshot(self, file_path: Path, sheet_name: str = None) -> str:
-        """Create a JPEG screenshot of the valid Excel area using pyautogui.
-
-        Args:
-            file_path: Path to the Excel file
-            sheet_name: Specific sheet to screenshot (None for first sheet)
-
-        Returns:
-            Path to the generated JPEG screenshot
-        """
-        try:
-            # Generate unique filename
-            timestamp = int(time.time())
-            screenshot_filename = f"{file_path.stem}_{sheet_name or 'sheet'}_{timestamp}.jpg"
-            screenshot_path = self._screenshots_dir / screenshot_filename
-
-            # Open Excel file with default application
-            if sys.platform == "darwin":  # macOS
-                proc = await asyncio.create_subprocess_exec("open", str(file_path))
-                await proc.wait()
-            elif sys.platform == "win32":  # Windows
-                proc = await asyncio.create_subprocess_exec("start", str(file_path), shell=True)
-                await proc.wait()
-            else:  # Linux
-                proc = await asyncio.create_subprocess_exec("xdg-open", str(file_path))
-                await proc.wait()
-
-            # Wait for Excel to open
-            await asyncio.sleep(3)
-
-            # Take screenshot of the entire screen
-            screenshot = await asyncio.to_thread(pyautogui.screenshot)
-
-            # Convert RGBA to RGB before saving as JPEG
-            if screenshot.mode == "RGBA":
-                screenshot = screenshot.convert("RGB")
-
-            await asyncio.to_thread(screenshot.save, screenshot_path, "JPEG", quality=95)
-
-            self._color_log(f"Created Excel screenshot: {screenshot_filename}", Color.green)
-            return str(screenshot_path)
-
-        except Exception as e:
-            self.logger.error(f"Failed to create Excel screenshot with pyautogui: {str(e)}")
-            raise
 
     async def _extract_embedded_media_xlsx(self, file_path: Path) -> list[dict[str, str]]:
         """Extract embedded media from XLSX files.
@@ -472,15 +424,10 @@ class XLSXCollection(ActionCollection):
             default="markdown", description="Output format: 'markdown', 'json', 'html', or 'text'"
         ),
         extract_images: bool = Field(default=True, description="Whether to extract and save images from the document"),
-        create_screenshot: bool = Field(
-            default=False, description="Whether to create a JPEG screenshot of the Excel data"
-        ),
         sheet_names: str | None = Field(
             default=None, description="Comma-separated list of specific sheet names to process (None for all sheets)"
         ),
         include_empty_cells: bool = Field(default=False, description="Whether to include empty cells in the output"),
-        screenshot_max_rows: int = Field(default=50, description="Maximum rows to include in screenshot"),
-        screenshot_max_cols: int = Field(default=20, description="Maximum columns to include in screenshot"),
     ) -> ActionResponse:
         """Extract content from Excel documents using pandas and xlrd.
 
@@ -497,11 +444,8 @@ class XLSXCollection(ActionCollection):
             file_path: Path to the Excel file
             output_format: Desired output format
             extract_images: Whether to extract embedded images
-            create_screenshot: Whether to create a JPEG screenshot
             sheet_names: Specific sheets to process
             include_empty_cells: Whether to include empty cells
-            screenshot_max_rows: Maximum rows in screenshot
-            screenshot_max_cols: Maximum columns in screenshot
 
         Returns:
             ActionResponse with extracted content, metadata, media file paths, and screenshot path
@@ -514,16 +458,10 @@ class XLSXCollection(ActionCollection):
                 output_format = output_format.default
             if isinstance(extract_images, FieldInfo):
                 extract_images = extract_images.default
-            if isinstance(create_screenshot, FieldInfo):
-                create_screenshot = create_screenshot.default
             if isinstance(sheet_names, FieldInfo):
                 sheet_names = sheet_names.default
             if isinstance(include_empty_cells, FieldInfo):
                 include_empty_cells = include_empty_cells.default
-            if isinstance(screenshot_max_rows, FieldInfo):
-                screenshot_max_rows = screenshot_max_rows.default
-            if isinstance(screenshot_max_cols, FieldInfo):
-                screenshot_max_cols = screenshot_max_cols.default
 
             # Validate input file
             validated_file_path: Path = await self._validate_file_path(file_path)
@@ -545,14 +483,6 @@ class XLSXCollection(ActionCollection):
             if extract_images and validated_file_path.suffix.lower() == ".xlsx":
                 media_files = await self._extract_embedded_media_xlsx(validated_file_path)
 
-            # Create screenshot
-            screenshot_path = None
-            if create_screenshot:
-                try:
-                    screenshot_path = await self._create_excel_screenshot(validated_file_path)
-                except Exception as e:
-                    self.logger.warning(f"Could not create screenshot: {e}")
-
             # Get file metadata
             file_stat = await asyncio.to_thread(os.stat, validated_file_path)
             metadata = DocumentMetadata(
@@ -573,7 +503,7 @@ class XLSXCollection(ActionCollection):
                 content=formatted_content,
                 metadata=metadata.model_dump(exclude_none=True),
                 media_files=media_files,
-                screenshot_path=screenshot_path,
+                screenshot_path=None,
                 status="success",
             )
 
@@ -583,76 +513,6 @@ class XLSXCollection(ActionCollection):
         except Exception as e:
             self.logger.error(f"An unexpected error occurred: {e}", exc_info=True)
             return ActionResponse(error=f"An unexpected error occurred: {e}\n{traceback.format_exc()}", status="error")
-
-    async def mcp_create_excel_screenshot(
-        self,
-        file_path: str = Field(description="Path to the Excel document file"),
-        sheet_name: str | None = Field(
-            default=None, description="Specific sheet name to screenshot (None for first sheet)"
-        ),
-        max_rows: int = Field(default=50, description="Maximum number of rows to include"),
-        max_cols: int = Field(default=20, description="Maximum number of columns to include"),
-    ) -> ActionResponse:
-        """Create a JPEG screenshot of the valid Excel area.
-
-        This tool creates a visual representation of Excel data as a JPEG image,
-        useful for further image processing or visual analysis.
-
-        Args:
-            file_path: Path to the Excel file
-            sheet_name: Specific sheet to screenshot
-            max_rows: Maximum rows to include in screenshot
-            max_cols: Maximum columns to include in screenshot
-
-        Returns:
-            ActionResponse with screenshot file path and metadata
-        """
-        try:
-            # Handle FieldInfo objects
-            if isinstance(file_path, FieldInfo):
-                file_path = file_path.default
-            if isinstance(sheet_name, FieldInfo):
-                sheet_name = sheet_name.default
-            if isinstance(max_rows, FieldInfo):
-                max_rows = max_rows.default
-            if isinstance(max_cols, FieldInfo):
-                max_cols = max_cols.default
-
-            # Validate input file
-            file_path: Path = self._validate_file_path(file_path)
-            self._color_log(f"Creating screenshot for Excel document: {file_path.name}", Color.cyan)
-
-            # Create screenshot
-            screenshot_path = self._create_excel_screenshot(file_path, sheet_name)
-
-            # Prepare metadata
-            file_stats = file_path.stat()
-            screenshot_stats = Path(screenshot_path).stat()
-
-            metadata = {
-                "source_file": str(file_path.absolute()),
-                "source_file_size": file_stats.st_size,
-                "screenshot_path": screenshot_path,
-                "screenshot_size": screenshot_stats.st_size,
-                "sheet_name": sheet_name,
-                "max_rows_displayed": max_rows,
-                "max_cols_displayed": max_cols,
-                "format": "JPEG",
-            }
-
-            return ActionResponse(
-                success=True,
-                message=f"Excel screenshot created successfully. File saved to: {screenshot_path}",
-                metadata=metadata,
-            )
-
-        except Exception as e:
-            self.logger.error(f"Screenshot creation failed: {str(e)}: {traceback.format_exc()}")
-            return ActionResponse(
-                success=False,
-                message=f"Screenshot creation failed: {str(e)}",
-                metadata={"error_type": "screenshot_error"},
-            )
 
     async def mcp_list_supported_formats(self) -> ActionResponse:
         """List all supported Excel formats for extraction.

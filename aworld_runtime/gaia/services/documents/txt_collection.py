@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import time
@@ -529,9 +530,7 @@ class TextCollection(ActionCollection):
             extraction_result = await self._extract_text_content(file_path, encoding)
 
             # Format for LLM
-            formatted_content = await self._format_content_for_llm(
-                extraction_result, output_format, max_content_length
-            )
+            formatted_content = await self._format_content_for_llm(extraction_result, output_format, max_content_length)
 
             # Get file metadata
             file_stat = await asyncio.to_thread(os.stat, file_path)
@@ -539,7 +538,6 @@ class TextCollection(ActionCollection):
                 content_type=extraction_result["content_type"],
                 encoding_info=extraction_result["encoding_info"],
                 statistics=extraction_result["statistics"],
-                content_type=extraction_result["content_type"],
             )
 
             return ActionResponse(

@@ -2,8 +2,11 @@
 
 from dotenv import load_dotenv
 
-from . import openrouter
+from . import gaia, openrouter
 
-__all__ = ["openrouter"]
+__all__ = [
+    "openrouter",
+    "gaia",
+]
 
 load_dotenv()

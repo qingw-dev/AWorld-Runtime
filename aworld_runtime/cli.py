@@ -2,11 +2,12 @@ import logging
 import time
 import uuid
 
+import typer
 import uvicorn
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from .config import get_settings
+from .gaia.services.sse_server import sse_cli as gaia_sse_cli
 from .logging_utils import setup_logger
 from .openrouter import openrouter_router
 
@@ -60,20 +61,59 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
+cli = typer.Typer()
 
 
-def main() -> None:
+@cli.command()
+def start_server(
+    host: str = typer.Option("0.0.0.0", help="Server host"),
+    port: int = typer.Option(19090, help="Server port"),
+    debug: bool = typer.Option(False, help="Debug mode"),
+    workers: int = typer.Option(4, help="Number of worker processes"),
+    log_level: str = typer.Option("info", help="Logging level"),
+):
     """Run the FastAPI application using Uvicorn."""
-    settings = get_settings()
     uvicorn.run(
         "aworld_runtime.cli:app",
-        host=settings.host,
-        port=settings.port,
-        reload=settings.debug,
-        workers=1 if settings.debug else 4,
-        log_level=settings.log_level.lower(),
+        host=host,
+        port=port,
+        reload=debug,
+        workers=1 if debug else workers,
+        log_level=log_level.lower(),
         timeout_keep_alive=1200,  # 20 minutes for agentic tasks
     )
+
+
+@cli.command()
+def gaia_mcp(
+    name: str = typer.Option("gaia-mcp-server", help="Server name"),
+    transport: str = typer.Option("stdio", help="Transport type (stdio or sse)"),
+    port: int | None = typer.Option(None, help="Server port for SSE transport"),
+    workspace: str | None = typer.Option(None, help="Workspace directory"),
+    unittest: bool = typer.Option(False, help="Run in unittest mode"),
+):
+    """Run the GAIA MCP server."""
+    if transport == "sse" and port is None:
+        raise typer.BadParameter("--port is required when --transport=sse")
+    if transport == "stdio" and port is not None:
+        raise typer.BadParameter("--port should not be specified when --transport=stdio")
+
+    # This is a bit of a hack to make it work with the existing sse_cli
+    import sys
+
+    sys.argv = ["aw-runtime", "--name", name, "--transport", transport]
+    if port:
+        sys.argv.extend(["--port", str(port)])
+    if workspace:
+        sys.argv.extend(["--workspace", workspace])
+    if unittest:
+        sys.argv.append("--unittest")
+
+    gaia_sse_cli()
+
+
+def main():
+    cli()
 
 
 if __name__ == "__main__":
