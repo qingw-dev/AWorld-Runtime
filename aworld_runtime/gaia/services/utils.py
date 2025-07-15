@@ -131,7 +131,7 @@ async def get_file_from_source_async(
             return temp_path, mime_type, content
 
         except aiohttp.ClientError as e:
-            raise aiohttp.ClientError(f"Failed to download file from URL: {e}: {traceback.format_exc()}")
+            raise aiohttp.ClientError(f"Failed to download file from URL: {e}: {traceback.format_exc()}") from e
         except Exception as e:
             raise OSError(f"Error processing URL: {e}: {traceback.format_exc()}") from e
 
@@ -228,7 +228,7 @@ def get_file_from_source(
             return temp_path, mime_type, content
 
         except requests.RequestException as e:
-            raise requests.RequestException(f"Failed to download file from URL: {e}: {traceback.format_exc()}")
+            raise requests.RequestException(f"Failed to download file from URL: {e}: {traceback.format_exc()}") from e
         except Exception as e:
             raise OSError(f"Error processing URL: {e}: {traceback.format_exc()}") from e
 

@@ -1,13 +1,15 @@
-import pytest
 from unittest.mock import AsyncMock, patch
 
-from aworld_runtime.openrouter.services.openrouter_service import OpenRouterService
+import pytest
+
 from aworld_runtime.openrouter.models.requests import ChatCompletionRequest
+from aworld_runtime.openrouter.services.openrouter_service import OpenRouterService
+
 
 @pytest.mark.asyncio
 async def test_chat_completion_success():
     """Test successful chat completion."""
-    with patch('aiohttp.ClientSession') as mock_session:
+    with patch("aiohttp.ClientSession") as mock_session:
         mock_response = AsyncMock()
         mock_response.status = 200
         mock_response.json.return_value = {"id": "test_id", "choices": []}
@@ -15,9 +17,7 @@ async def test_chat_completion_success():
 
         service = OpenRouterService()
         request_data = ChatCompletionRequest(
-            model="test_model",
-            messages=[{"role": "user", "content": "Hello"}],
-            api_key="test_key"
+            model="test_model", messages=[{"role": "user", "content": "Hello"}], api_key="test_key"
         )
         response, success = await service.chat_completion(request_data, "test_req_id")
 
@@ -25,10 +25,11 @@ async def test_chat_completion_success():
         assert response is not None
         assert response.id == "test_id"
 
+
 @pytest.mark.asyncio
 async def test_list_models_success():
     """Test successful model listing."""
-    with patch('aiohttp.ClientSession') as mock_session:
+    with patch("aiohttp.ClientSession") as mock_session:
         mock_response = AsyncMock()
         mock_response.status = 200
         mock_response.json.return_value = {"data": []}

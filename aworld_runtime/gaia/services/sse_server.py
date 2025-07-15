@@ -3,10 +3,9 @@ import os
 import traceback
 from pathlib import Path
 
-from aworld.logs.util import Color
 from mcp.server import FastMCP
 
-from ...logging_utils import color_log, setup_logger
+from ...logging_utils import Color, color_log, setup_logger
 from . import (
     ActionArguments,
     ArxivCollection,
@@ -126,7 +125,7 @@ class SSEServer:
             self._color_log("Starting Unified MCP Server...", Color.green)
             if self.arguments.transport == "sse":
                 assert self.arguments.port is not None, "Port is required for SSE transport"
-                assert type(self.arguments.port) == int, "Port must be a valid integer"
+                assert isinstance(self.arguments.port, int), "Port must be a valid integer"
                 self.server.settings.port = self.arguments.port
             self.server.run(transport=self.arguments.transport)
         else:

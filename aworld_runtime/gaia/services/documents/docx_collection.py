@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import time
@@ -206,7 +207,7 @@ class DOCXExtractionCollection(ActionCollection):
             else:
                 raise RuntimeError("Conversion completed but output file not found")
 
-        except asyncio.TimeoutError as e:
+        except TimeoutError as e:
             self.logger.error("LibreOffice conversion timed out")
             raise RuntimeError("Conversion timed out after 60 seconds") from e
 

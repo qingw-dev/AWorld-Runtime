@@ -635,7 +635,7 @@ class WikipediaCollection(ActionCollection):
             )
 
             # Get the page
-            page = await asyncio.to_thread(wikipedia.page, title, auto_suggest=auto_suggest, redirect=redirect)
+            page = await asyncio.to_thread(wikipedia.page, title, auto_suggest=True, redirect=True)
 
             # Format output for LLM
             if output_format == "json":
@@ -731,7 +731,7 @@ class WikipediaCollection(ActionCollection):
             self._color_log(f"🔗 Retrieving links from Wikipedia article: {title} (language: {language})", Color.cyan)
 
             # Get the page
-            page = await asyncio.to_thread(wikipedia.page, title, auto_suggest=auto_suggest, redirect=redirect)
+            page = await asyncio.to_thread(wikipedia.page, title, auto_suggest=True, redirect=True)
 
             # Format results
             formatted_results = []
@@ -1028,7 +1028,7 @@ class WikipediaCollection(ActionCollection):
         }
 
         formatted_info = f"""# Wikipedia Service Capabilities
-                
+
         ## Features
         {chr(10).join(f"- {feature}" for feature in capabilities["supported_features"])}
 

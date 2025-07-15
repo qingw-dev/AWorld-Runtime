@@ -470,7 +470,7 @@ class TerminalCollection(ActionCollection):
         }
 
         formatted_info = f"""# Terminal Service Capabilities
-        
+
         ## Platform Information
         - **System:** {self.platform_info["system"]}
         - **Platform:** {self.platform_info["platform"]}

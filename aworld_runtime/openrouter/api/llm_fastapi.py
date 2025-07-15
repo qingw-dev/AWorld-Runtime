@@ -64,10 +64,10 @@ async def chat_completions(
 
     except ValidationError as e:
         logger.error(f"[{request_id}] Validation error: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"[{request_id}] Error in chat completions endpoint: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @openrouter_router.get("/models")
@@ -102,4 +102,4 @@ async def list_models(request: Request, request_id: str = Depends(get_request_id
 
     except Exception as e:
         logger.error(f"[{request_id}] Error in models endpoint: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e

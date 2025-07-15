@@ -7,10 +7,10 @@ from pathlib import Path
 from typing import Any, Literal
 
 import chardet
-from aworld.logs.util import Color
 from pydantic import Field
 from pydantic.fields import FieldInfo
 
+from ....logging_utils import Color
 from ...models.document import DocumentMetadata
 from ..action_collection import ActionArguments, ActionCollection, ActionResponse
 from ..utils import get_mime_type
@@ -533,7 +533,6 @@ class TextCollection(ActionCollection):
             formatted_content = await self._format_content_for_llm(extraction_result, output_format, max_content_length)
 
             # Get file metadata
-            file_stat = await asyncio.to_thread(os.stat, file_path)
             metadata = DocumentMetadata(
                 content_type=extraction_result["content_type"],
                 encoding_info=extraction_result["encoding_info"],
@@ -561,7 +560,7 @@ class TextCollection(ActionCollection):
         """
         return ActionResponse(
             content={
-                "supported_extensions": sorted(list(self.supported_extensions)),
+                "supported_extensions": sorted(self.supported_extensions),
                 "description": "These extensions are generally supported for text content extraction.",
             },
             status="success",

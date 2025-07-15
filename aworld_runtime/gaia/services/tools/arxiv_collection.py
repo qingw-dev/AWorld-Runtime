@@ -678,11 +678,11 @@ class ArxivCollection(ActionCollection):
         }
 
         formatted_info = f"""# ArXiv Service Capabilities
-        
+
         ## Supported Operations
         {chr(10).join(f"- {op}" for op in capabilities["supported_operations"])}
 
-        ## Search Capabilities  
+        ## Search Capabilities
         {chr(10).join(f"- {cap}" for cap in capabilities["search_capabilities"])}
 
         ## Supported Output Formats
