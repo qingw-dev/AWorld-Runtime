@@ -9,8 +9,9 @@ on:
       - main
 
 jobs:
-  build:
+  code-quality:
     runs-on: ubuntu-latest
+    name: Code Quality Checks
 
     steps:
       - uses: actions/checkout@v4
@@ -29,8 +30,37 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras
 
-      - name: Run linter
-        run: uv run ruff check .
+      - name: Run ruff linting
+        run: |
+          echo "Running ruff linting checks..."
+          uv run ruff check .
+
+      - name: Run ruff formatting check
+        run: |
+          echo "Checking code formatting..."
+          uv run ruff format --check .
+
+  tests:
+    runs-on: ubuntu-latest
+    name: Run Tests
+    needs: code-quality
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Add uv to PATH
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: uv sync --all-extras
 
       - name: Run tests
         run: uv run pytest
