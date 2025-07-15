@@ -3,10 +3,9 @@ import os
 import traceback
 from pathlib import Path
 
-from aworld.logs.util import Color
 from mcp.server import FastMCP
 
-from ...logging_utils import color_log, setup_logger
+from ...logging_utils import Color, color_log, setup_logger
 from . import (
     ActionArguments,
     ArxivCollection,
@@ -45,8 +44,13 @@ class SSEServer:
         self.collections = self._initialize_collections()
         self._register_all_tools()
 
-        self._color_log("Unified MCP Server initialized with all collections", Color.green)
-        self._color_log(f"Total tools registered: {len(self.server._tool_manager.list_tools())}", Color.blue)
+        self._color_log(
+            "Unified MCP Server initialized with all collections", Color.green
+        )
+        self._color_log(
+            f"Total tools registered: {len(self.server._tool_manager.list_tools())}",
+            Color.blue,
+        )
 
     def _obtain_valid_workspace(self, workspace: str | None = None) -> Path:
         path = Path(workspace) if workspace else Path(os.getenv("AWORLD_WORKSPACE"))
@@ -94,49 +98,74 @@ class SSEServer:
                 collection_instance = collection_class(collection_args)
                 collections.append(collection_instance)
 
-                self._color_log(f"Initialized {collection_class.__name__}", Color.cyan, "debug")
+                self._color_log(
+                    f"Initialized {collection_class.__name__}", Color.cyan, "debug"
+                )
             except Exception as e:
-                self._color_log(f"Failed to initialize {collection_class.__name__}: {str(e)}", Color.red, "warning")
+                self._color_log(
+                    f"Failed to initialize {collection_class.__name__}: {str(e)}",
+                    Color.red,
+                    "warning",
+                )
                 self._color_log(f"{traceback.format_exc()}", Color.red, "debug")
         return collections
 
     def _register_all_tools(self):
         for collection in self.collections:
             for attr_name in dir(collection):
-                if attr_name.startswith("mcp_") and callable(getattr(collection, attr_name)):
+                if attr_name.startswith("mcp_") and callable(
+                    getattr(collection, attr_name)
+                ):
                     tool_method = getattr(collection, attr_name)
 
-                    collection_name = collection.__class__.__name__.replace("Collection", "").lower()
+                    collection_name = collection.__class__.__name__.replace(
+                        "Collection", ""
+                    ).lower()
                     tool_name = f"{collection_name}_{attr_name}"
 
                     try:
                         self.server.add_tool(
                             tool_method,
                             name=tool_name,
-                            description=tool_method.__doc__ or f"Tool from {collection.__class__.__name__}",
+                            description=tool_method.__doc__
+                            or f"Tool from {collection.__class__.__name__}",
                         )
 
-                        self._color_log(f"Registered tool: {tool_name}", Color.blue, "debug")
+                        self._color_log(
+                            f"Registered tool: {tool_name}", Color.blue, "debug"
+                        )
 
                     except Exception as e:
-                        self._color_log(f"Failed to register {tool_name}: {str(e)}", Color.red, "warning")
+                        self._color_log(
+                            f"Failed to register {tool_name}: {str(e)}",
+                            Color.red,
+                            "warning",
+                        )
 
     def run(self):
         if not self.arguments.unittest:
             self._color_log("Starting Unified MCP Server...", Color.green)
             if self.arguments.transport == "sse":
-                assert self.arguments.port is not None, "Port is required for SSE transport"
-                assert type(self.arguments.port) == int, "Port must be a valid integer"
+                assert self.arguments.port is not None, (
+                    "Port is required for SSE transport"
+                )
+                assert isinstance(self.arguments.port, int), (
+                    "Port must be a valid integer"
+                )
                 self.server.settings.port = self.arguments.port
             self.server.run(transport=self.arguments.transport)
         else:
-            self._color_log("Running in unittest mode, server not started", Color.yellow)
+            self._color_log(
+                "Running in unittest mode, server not started", Color.yellow
+            )
 
 
 def sse_cli():
     parser = argparse.ArgumentParser(description="Unified MCP Server")
     parser.add_argument("--name", default="unified-mcp-server", help="Server name")
-    parser.add_argument("--transport", choices=["stdio", "sse"], default="stdio", help="Transport type")
+    parser.add_argument(
+        "--transport", choices=["stdio", "sse"], default="stdio", help="Transport type"
+    )
     parser.add_argument("--port", type=int, help="Server port for SSE transport")
     parser.add_argument("--workspace", help="Workspace directory")
     parser.add_argument("--unittest", action="store_true", help="Run in unittest mode")
@@ -150,7 +179,11 @@ def sse_cli():
             parser.error("--port should not be specified when --transport=stdio")
 
     arguments = ActionArguments(
-        name=args.name, transport=args.transport, port=args.port, workspace=args.workspace, unittest=args.unittest
+        name=args.name,
+        transport=args.transport,
+        port=args.port,
+        workspace=args.workspace,
+        unittest=args.unittest,
     )
 
     server = SSEServer(arguments)

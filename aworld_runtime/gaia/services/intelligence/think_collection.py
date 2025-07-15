@@ -3,13 +3,12 @@ import time
 import traceback
 from typing import Literal
 
-from aworld.config.conf import AgentConfig
-from aworld.models.llm import call_llm_model, get_llm_model
 from pydantic import Field
 from pydantic.fields import FieldInfo
 
 from ....logging_utils import Color
 from ..action_collection import ActionArguments, ActionCollection, ActionResponse
+from ..utils import ModelResponse, call_openai_text_model
 
 
 class ThinkCollection(ActionCollection):
@@ -26,17 +25,12 @@ class ThinkCollection(ActionCollection):
     def __init__(self, arguments: ActionArguments) -> None:
         super().__init__(arguments)
 
-        # Initialize reasoning model configuration
-        self._llm_config = AgentConfig(
-            llm_provider="openai",
-            # llm_model_name="google/gemini-2.5-flash-preview-05-20:thinking",
-            llm_model_name="deepseek/deepseek-r1-0528:free",
-            llm_api_key=os.getenv("LLM_API_KEY", "your_openai_api_key"),
-            llm_base_url=os.getenv("LLM_BASE_URL", "your_openai_base_url"),
+        self._color_log(
+            "Intelligence Reasoning Service initialized", Color.green, "debug"
         )
-
-        self._color_log("Intelligence Reasoning Service initialized", Color.green, "debug")
-        self._color_log(f"Using model: {self._llm_config.llm_model_name}", Color.blue, "debug")
+        self._color_log(
+            "Using model: deepseek/deepseek-r1-0528:fre", Color.blue, "debug"
+        )
 
     def _prepare_reasoning_prompt(self, question: str, original_task: str = "") -> str:
         """Prepare the reasoning prompt with question and optional context.
@@ -52,7 +46,7 @@ class ThinkCollection(ActionCollection):
             return f"Original Task: {original_task}\n\nQuestion: {question}"
         return f"Question: {question}"
 
-    def _call_reasoning_model(self, prompt: str, temperature: float = 0.3) -> str:
+    async def _call_reasoning_model(self, prompt: str, temperature: float = 0.3) -> str:
         """Call the reasoning model with the prepared prompt.
 
         Args:
@@ -65,8 +59,7 @@ class ThinkCollection(ActionCollection):
         Raises:
             Exception: If model call fails
         """
-        response = call_llm_model(
-            llm_model=get_llm_model(conf=self._llm_config),
+        response: ModelResponse = await call_openai_text_model(
             messages=[
                 {
                     "role": "system",
@@ -78,9 +71,11 @@ class ThinkCollection(ActionCollection):
                 },
                 {"role": "user", "content": prompt},
             ],
+            model="deepseek/deepseek-r1-0528:free",
+            base_url=os.getenv("LLM_BASE_URL", "your_openai_base_url"),
+            api_key=os.getenv("LLM_API_KEY", "your_openai_api_key"),
             temperature=temperature,
         )
-
         return response.content
 
     def mcp_complex_problem_reasoning(
@@ -88,7 +83,9 @@ class ThinkCollection(ActionCollection):
         question: str = Field(
             description="The input question for complex problem reasoning, such as math and code contest problems"
         ),
-        original_task: str = Field(default="", description="The original task description."),
+        original_task: str = Field(
+            default="", description="The original task description."
+        ),
         temperature: float = Field(
             default=0.3,
             description="Model temperature for response variability (0.0-1.0)",
@@ -135,7 +132,9 @@ class ThinkCollection(ActionCollection):
             if not question or not question.strip():
                 raise ValueError("Question is required for complex problem reasoning")
 
-            self._color_log(f"Processing reasoning request: {question[:100]}...", Color.cyan)
+            self._color_log(
+                f"Processing reasoning request: {question[:100]}...", Color.cyan
+            )
 
             start_time = time.time()
 
@@ -148,7 +147,9 @@ class ThinkCollection(ActionCollection):
             elif reasoning_style == "concise":
                 prompt += "\n\nPlease provide a concise but complete reasoning and final answer."
             elif reasoning_style == "detailed":
-                prompt += "\n\nPlease provide detailed analysis with comprehensive reasoning."
+                prompt += (
+                    "\n\nPlease provide detailed analysis with comprehensive reasoning."
+                )
 
             # Call the reasoning model
             reasoning_result = self._call_reasoning_model(prompt, temperature)
@@ -157,7 +158,7 @@ class ThinkCollection(ActionCollection):
 
             # Prepare metadata
             metadata = {
-                "model_name": self._llm_config.llm_model_name,
+                "model_name": "deepseek/deepseek-r1-0528:free",
                 "reasoning_style": reasoning_style,
                 "response_length": len(reasoning_result),
             }
@@ -167,7 +168,9 @@ class ThinkCollection(ActionCollection):
                 Color.green,
             )
 
-            return ActionResponse(success=True, message=reasoning_result, metadata=metadata)
+            return ActionResponse(
+                success=True, message=reasoning_result, metadata=metadata
+            )
 
         except ValueError as e:
             self.logger.error(f"Invalid input: {str(e)}")
@@ -199,12 +202,15 @@ class ThinkCollection(ActionCollection):
         }
 
         capability_list = "\n".join(
-            [f"**{capability}**: {description}" for capability, description in capabilities.items()]
+            [
+                f"**{capability}**: {description}"
+                for capability, description in capabilities.items()
+            ]
         )
 
         metadata = {
-            "model_name": self._llm_config.llm_model_name,
-            "provider": self._llm_config.llm_provider,
+            "model_name": "deepseek/deepseek-r1-0528:free",
+            "provider": "openrouter",
             "supported_capabilities": list(capabilities.keys()),
             "total_capabilities": len(capabilities),
             "reasoning_styles": ["detailed", "concise", "step-by-step"],

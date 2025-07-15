@@ -97,7 +97,9 @@ def gaia_mcp(
     if transport == "sse" and port is None:
         raise typer.BadParameter("--port is required when --transport=sse")
     if transport == "stdio" and port is not None:
-        raise typer.BadParameter("--port should not be specified when --transport=stdio")
+        raise typer.BadParameter(
+            "--port should not be specified when --transport=stdio"
+        )
 
     arguments = ActionArguments(
         name=name,

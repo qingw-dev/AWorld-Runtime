@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import time
@@ -31,9 +32,13 @@ class PPTXCollection(ActionCollection):
         self.supported_extensions = {".pptx", ".ppt"}
 
         self._color_log("PPTX Extraction Service initialized", Color.green, "debug")
-        self._color_log(f"Media output directory: {self._media_output_dir}", Color.blue, "debug")
+        self._color_log(
+            f"Media output directory: {self._media_output_dir}", Color.blue, "debug"
+        )
 
-    async def _extract_images_from_pptx(self, file_path: Path, file_stem: str) -> list[dict[str, str]]:
+    async def _extract_images_from_pptx(
+        self, file_path: Path, file_stem: str
+    ) -> list[dict[str, str]]:
         """Extract embedded images from PPTX file.
 
         Args:
@@ -50,7 +55,9 @@ class PPTXCollection(ActionCollection):
                 # PPTX files are ZIP archives
                 with zipfile.ZipFile(file_path, "r") as zip_file:
                     # Find media files in the archive
-                    media_files = [f for f in zip_file.namelist() if f.startswith("ppt/media/")]
+                    media_files = [
+                        f for f in zip_file.namelist() if f.startswith("ppt/media/")
+                    ]
 
                     for idx, media_file in enumerate(media_files):
                         try:
@@ -71,7 +78,8 @@ class PPTXCollection(ActionCollection):
                             # Determine media type
                             media_type = (
                                 "image"
-                                if original_ext.lower() in {".png", ".jpg", ".jpeg", ".gif", ".bmp"}
+                                if original_ext.lower()
+                                in {".png", ".jpg", ".jpeg", ".gif", ".bmp"}
                                 else "media"
                             )
 
@@ -84,10 +92,14 @@ class PPTXCollection(ActionCollection):
                                 }
                             )
 
-                            self._color_log(f"Saved media: {media_filename}", Color.blue)
+                            self._color_log(
+                                f"Saved media: {media_filename}", Color.blue
+                            )
 
                         except Exception as e:
-                            self.logger.error(f"Failed to extract media {media_file}: {e}")
+                            self.logger.error(
+                                f"Failed to extract media {media_file}: {e}"
+                            )
 
             except Exception as e:
                 self.logger.error(f"Failed to extract media from PPTX: {e}")
@@ -96,7 +108,9 @@ class PPTXCollection(ActionCollection):
 
         return await asyncio.to_thread(blocking_zip_extraction)
 
-    def _extract_slide_structure(self, presentation: PresentationType) -> dict[str, Any]:
+    def _extract_slide_structure(
+        self, presentation: PresentationType
+    ) -> dict[str, Any]:
         """Extract presentation structure information.
 
         Args:
@@ -114,7 +128,9 @@ class PPTXCollection(ActionCollection):
         }
 
         # Get slide size information
-        if hasattr(presentation.slide_width, "inches") and hasattr(presentation.slide_height, "inches"):
+        if hasattr(presentation.slide_width, "inches") and hasattr(
+            presentation.slide_height, "inches"
+        ):
             structure["slide_sizes"] = {
                 "width_inches": presentation.slide_width.inches,
                 "height_inches": presentation.slide_height.inches,
@@ -124,7 +140,9 @@ class PPTXCollection(ActionCollection):
         for slide_idx, slide in enumerate(presentation.slides):
             layout_info = {
                 "slide_index": slide_idx,
-                "layout_name": slide.slide_layout.name if hasattr(slide.slide_layout, "name") else "Unknown",
+                "layout_name": slide.slide_layout.name
+                if hasattr(slide.slide_layout, "name")
+                else "Unknown",
                 "shape_count": len(slide.shapes),
                 "has_title": False,
                 "has_content": False,
@@ -144,14 +162,19 @@ class PPTXCollection(ActionCollection):
 
             # Check for notes
             if hasattr(slide, "notes_slide") and slide.notes_slide:
-                if hasattr(slide.notes_slide, "notes_text_frame") and slide.notes_slide.notes_text_frame.text.strip():
+                if (
+                    hasattr(slide.notes_slide, "notes_text_frame")
+                    and slide.notes_slide.notes_text_frame.text.strip()
+                ):
                     structure["has_notes"] = True
 
             structure["slide_layouts"].append(layout_info)
 
         return structure
 
-    async def _extract_content_from_pptx(self, file_path: Path, extract_notes: bool = True) -> dict[str, Any]:
+    async def _extract_content_from_pptx(
+        self, file_path: Path, extract_notes: bool = True
+    ) -> dict[str, Any]:
         """Extract content from PPTX file using python-pptx.
 
         Args:
@@ -189,7 +212,8 @@ class PPTXCollection(ActionCollection):
                             # Try to identify if this is a title
                             if (
                                 hasattr(shape, "placeholder_format")
-                                and "title" in str(shape.placeholder_format.type).lower()
+                                and "title"
+                                in str(shape.placeholder_format.type).lower()
                             ):
                                 slide_data["title"] = text_content
                             else:
@@ -217,10 +241,14 @@ class PPTXCollection(ActionCollection):
                                 hasattr(slide.notes_slide, "notes_text_frame")
                                 and slide.notes_slide.notes_text_frame.text.strip()
                             ):
-                                slide_data["notes"] = slide.notes_slide.notes_text_frame.text.strip()
+                                slide_data["notes"] = (
+                                    slide.notes_slide.notes_text_frame.text.strip()
+                                )
                                 total_text_length += len(slide_data["notes"])
                         except Exception as e:
-                            self.logger.warning(f"Failed to extract notes from slide {slide_idx + 1}: {e}")
+                            self.logger.warning(
+                                f"Failed to extract notes from slide {slide_idx + 1}: {e}"
+                            )
 
                     slides_content.append(slide_data)
 
@@ -244,7 +272,10 @@ class PPTXCollection(ActionCollection):
         return await asyncio.to_thread(blocking_pptx_extraction)
 
     async def _format_content_for_llm(
-        self, extraction_result: dict[str, Any], output_format: str, include_structure: bool = True
+        self,
+        extraction_result: dict[str, Any],
+        output_format: str,
+        include_structure: bool = True,
     ) -> str:
         """Format extracted PPTX content to be LLM-friendly.
 
@@ -270,7 +301,9 @@ class PPTXCollection(ActionCollection):
                     content_parts.append(
                         f'- **Slide Size**: {sizes["width_inches"]:.1f}" × {sizes["height_inches"]:.1f}"'
                     )
-                content_parts.append(f"- **Has Speaker Notes**: {'Yes' if structure['has_notes'] else 'No'}")
+                content_parts.append(
+                    f"- **Has Speaker Notes**: {'Yes' if structure['has_notes'] else 'No'}"
+                )
                 content_parts.append("")
 
             # Format each slide
@@ -320,7 +353,9 @@ class PPTXCollection(ActionCollection):
             if include_structure:
                 html_parts.append("<div class='presentation-overview'>")
                 html_parts.append("<h1>Presentation Overview</h1>")
-                html_parts.append(f"<p><strong>Total Slides:</strong> {structure['slide_count']}</p>")
+                html_parts.append(
+                    f"<p><strong>Total Slides:</strong> {structure['slide_count']}</p>"
+                )
                 if structure.get("slide_sizes"):
                     sizes = structure["slide_sizes"]
                     html_parts.append(
@@ -335,7 +370,9 @@ class PPTXCollection(ActionCollection):
                 html_parts.append("</div>")
 
             for slide in slides:
-                html_parts.append(f"<div class='slide' data-slide='{slide['slide_number']}'>")
+                html_parts.append(
+                    f"<div class='slide' data-slide='{slide['slide_number']}'>"
+                )
                 html_parts.append(f"<h2>Slide {slide['slide_number']}</h2>")
 
                 if slide["title"]:
@@ -344,7 +381,9 @@ class PPTXCollection(ActionCollection):
                 if slide["content"]:
                     html_parts.append("<div class='slide-content'>")
                     for content_item in slide["content"]:
-                        html_parts.append(f"<p>{content_item.replace(chr(10), '<br>')}</p>")
+                        html_parts.append(
+                            f"<p>{content_item.replace(chr(10), '<br>')}</p>"
+                        )
                     html_parts.append("</div>")
 
                 if slide["notes"]:
@@ -368,8 +407,12 @@ class PPTXCollection(ActionCollection):
                 text_parts.append(f"Total Slides: {structure['slide_count']}")
                 if structure.get("slide_sizes"):
                     sizes = structure["slide_sizes"]
-                    text_parts.append(f'Slide Size: {sizes["width_inches"]:.1f}" × {sizes["height_inches"]:.1f}"')
-                text_parts.append(f"Has Speaker Notes: {'Yes' if structure['has_notes'] else 'No'}")
+                    text_parts.append(
+                        f'Slide Size: {sizes["width_inches"]:.1f}" × {sizes["height_inches"]:.1f}"'
+                    )
+                text_parts.append(
+                    f"Has Speaker Notes: {'Yes' if structure['has_notes'] else 'No'}"
+                )
                 text_parts.append("\n" + "=" * 50 + "\n")
 
             for slide in slides:
@@ -392,16 +435,23 @@ class PPTXCollection(ActionCollection):
 
     async def mcp_extract_pptx_content(
         self,
-        file_path: str = Field(description="Path to the PPTX/PPT presentation file to extract content from"),
+        file_path: str = Field(
+            description="Path to the PPTX/PPT presentation file to extract content from"
+        ),
         output_format: Literal["markdown", "json", "html", "text"] = Field(
-            default="markdown", description="Output format: 'markdown', 'json', 'html', or 'text'"
+            default="markdown",
+            description="Output format: 'markdown', 'json', 'html', or 'text'",
         ),
         extract_images: bool = Field(
-            default=True, description="Whether to extract and save images from the presentation"
+            default=True,
+            description="Whether to extract and save images from the presentation",
         ),
-        extract_notes: bool = Field(default=True, description="Whether to extract speaker notes"),
+        extract_notes: bool = Field(
+            default=True, description="Whether to extract speaker notes"
+        ),
         include_structure: bool = Field(
-            default=True, description="Whether to include presentation structure information"
+            default=True,
+            description="Whether to include presentation structure information",
         ),
     ) -> ActionResponse:
         """Extract content from PPTX/PPT presentations using python-pptx.
@@ -440,15 +490,21 @@ class PPTXCollection(ActionCollection):
 
             # Validate input file
             file_path: Path = self._validate_file_path(file_path)
-            self._color_log(f"Processing PPTX presentation: {file_path.name}", Color.cyan)
+            self._color_log(
+                f"Processing PPTX presentation: {file_path.name}", Color.cyan
+            )
 
             # Extract embedded media if requested
             saved_media = []
             if extract_images and file_path.suffix.lower() == ".pptx":
-                saved_media = await self._extract_images_from_pptx(file_path, file_path.stem)
+                saved_media = await self._extract_images_from_pptx(
+                    file_path, file_path.stem
+                )
 
             # Extract presentation content
-            extraction_result = await self._extract_content_from_pptx(file_path, extract_notes=extract_notes)
+            extraction_result = await self._extract_content_from_pptx(
+                file_path, extract_notes=extract_notes
+            )
 
             # Format content for LLM consumption
             formatted_content = await self._format_content_for_llm(
@@ -462,9 +518,13 @@ class PPTXCollection(ActionCollection):
                 file_size=file_stats.st_size,
                 file_type=file_path.suffix.lower(),
                 absolute_path=str(file_path.absolute()),
-                page_count=extraction_result["slide_count"],  # Use slide count as page count
+                page_count=extraction_result[
+                    "slide_count"
+                ],  # Use slide count as page count
                 processing_time=extraction_result["processing_time"],
-                extracted_images=[media["path"] for media in saved_media if media["type"] == "image"],
+                extracted_images=[
+                    media["path"] for media in saved_media if media["type"] == "image"
+                ],
                 extracted_media=saved_media,
                 output_format=output_format,
                 llm_enhanced=False,
@@ -491,20 +551,28 @@ class PPTXCollection(ActionCollection):
                 Color.green,
             )
 
-            return ActionResponse(success=True, message=formatted_content, metadata=final_metadata)
+            return ActionResponse(
+                success=True, message=formatted_content, metadata=final_metadata
+            )
 
         except FileNotFoundError as e:
             self.logger.error(f"File not found: {str(e)}: {traceback.format_exc()}")
             return ActionResponse(
-                success=False, message=f"File not found: {str(e)}", metadata={"error_type": "file_not_found"}
+                success=False,
+                message=f"File not found: {str(e)}",
+                metadata={"error_type": "file_not_found"},
             )
         except ValueError as e:
             self.logger.error(f"Invalid input: {str(e)}: {traceback.format_exc()}")
             return ActionResponse(
-                success=False, message=f"Invalid input: {str(e)}", metadata={"error_type": "invalid_input"}
+                success=False,
+                message=f"Invalid input: {str(e)}",
+                metadata={"error_type": "invalid_input"},
             )
         except Exception as e:
-            self.logger.error(f"PPTX extraction failed: {str(e)}: {traceback.format_exc()}")
+            self.logger.error(
+                f"PPTX extraction failed: {str(e)}: {traceback.format_exc()}"
+            )
             return ActionResponse(
                 success=False,
                 message=f"PPTX extraction failed: {str(e)}",
@@ -523,13 +591,19 @@ class PPTXCollection(ActionCollection):
         }
 
         format_list = "\n".join(
-            [f"**{format_name}**: {description}" for format_name, description in supported_formats.items()]
+            [
+                f"**{format_name}**: {description}"
+                for format_name, description in supported_formats.items()
+            ]
         )
 
         return ActionResponse(
             success=True,
             message=f"Supported presentation formats:\n\n{format_list}",
-            metadata={"supported_formats": list(supported_formats.keys()), "total_formats": len(supported_formats)},
+            metadata={
+                "supported_formats": list(supported_formats.keys()),
+                "total_formats": len(supported_formats),
+            },
         )
 
 

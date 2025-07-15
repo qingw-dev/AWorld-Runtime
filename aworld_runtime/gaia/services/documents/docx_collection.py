@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import time
@@ -31,9 +32,13 @@ class DOCXExtractionCollection(ActionCollection):
         self.supported_extensions = {".docx", ".doc"}
 
         self._color_log("DOCX Extraction Service initialized", Color.green, "debug")
-        self._color_log(f"Media output directory: {self._media_output_dir}", Color.blue, "debug")
+        self._color_log(
+            f"Media output directory: {self._media_output_dir}", Color.blue, "debug"
+        )
 
-    async def _extract_images_from_docx(self, file_path: Path, file_stem: str) -> list[dict[str, str]]:
+    async def _extract_images_from_docx(
+        self, file_path: Path, file_stem: str
+    ) -> list[dict[str, str]]:
         """Extract embedded images from DOCX file.
 
         Args:
@@ -51,7 +56,9 @@ class DOCXExtractionCollection(ActionCollection):
                 # DOCX files are ZIP archives
                 with zipfile.ZipFile(file_path, "r") as docx_zip:
                     # Look for media files in the word/media/ directory
-                    media_files = [f for f in docx_zip.namelist() if f.startswith("word/media/")]
+                    media_files = [
+                        f for f in docx_zip.namelist() if f.startswith("word/media/")
+                    ]
 
                     for idx, media_file in enumerate(media_files):
                         try:
@@ -70,11 +77,28 @@ class DOCXExtractionCollection(ActionCollection):
 
                             # Determine media type based on extension
                             media_type = "image"
-                            if file_extension.lower() in [".mp3", ".wav", ".m4a", ".ogg"]:
+                            if file_extension.lower() in [
+                                ".mp3",
+                                ".wav",
+                                ".m4a",
+                                ".ogg",
+                            ]:
                                 media_type = "audio"
-                            elif file_extension.lower() in [".mp4", ".avi", ".mov", ".wmv"]:
+                            elif file_extension.lower() in [
+                                ".mp4",
+                                ".avi",
+                                ".mov",
+                                ".wmv",
+                            ]:
                                 media_type = "video"
-                            elif file_extension.lower() in [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff"]:
+                            elif file_extension.lower() in [
+                                ".png",
+                                ".jpg",
+                                ".jpeg",
+                                ".gif",
+                                ".bmp",
+                                ".tiff",
+                            ]:
                                 media_type = "image"
                             else:
                                 media_type = "other"
@@ -89,10 +113,14 @@ class DOCXExtractionCollection(ActionCollection):
                                 }
                             )
 
-                            self._color_log(f"Extracted {media_type}: {media_filename}", Color.blue)
+                            self._color_log(
+                                f"Extracted {media_type}: {media_filename}", Color.blue
+                            )
 
                         except Exception as e:
-                            self.logger.error(f"Failed to extract media file {media_file}: {e}")
+                            self.logger.error(
+                                f"Failed to extract media file {media_file}: {e}"
+                            )
 
             except Exception as e:
                 self.logger.warning(f"Could not extract media from DOCX: {e}")
@@ -129,8 +157,12 @@ class DOCXExtractionCollection(ActionCollection):
 
         # Check for headers and footers
         for section in doc.sections:
-            if (section.header.paragraphs and any(p.text.strip() for p in section.header.paragraphs)) or (
-                section.footer.paragraphs and any(p.text.strip() for p in section.footer.paragraphs)
+            if (
+                section.header.paragraphs
+                and any(p.text.strip() for p in section.header.paragraphs)
+            ) or (
+                section.footer.paragraphs
+                and any(p.text.strip() for p in section.footer.paragraphs)
             ):
                 structure["has_headers_footers"] = True
                 break
@@ -183,22 +215,34 @@ class DOCXExtractionCollection(ActionCollection):
 
         # Check if already converted
         if docx_path.exists():
-            self._color_log(f"Using existing converted file: {docx_path.name}", Color.blue)
+            self._color_log(
+                f"Using existing converted file: {docx_path.name}", Color.blue
+            )
             return docx_path
 
         self._color_log(f"Converting .doc to .docx: {doc_path.name}", Color.yellow)
 
-        cmd = ["libreoffice", "--headless", "--convert-to", "docx", "--outdir", str(output_dir), str(doc_path)]
+        cmd = [
+            "libreoffice",
+            "--headless",
+            "--convert-to",
+            "docx",
+            "--outdir",
+            str(output_dir),
+            str(doc_path),
+        ]
 
         try:
             process = await asyncio.create_subprocess_exec(
                 *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
-            stdout, stderr = await process.communicate()
+            _, stderr = await process.communicate()
 
             if process.returncode != 0:
                 self.logger.error(f"LibreOffice conversion failed: {stderr.decode()}")
-                raise RuntimeError(f"Failed to convert .doc to .docx: {stderr.decode()}")
+                raise RuntimeError(
+                    f"Failed to convert .doc to .docx: {stderr.decode()}"
+                )
 
             if docx_path.exists():
                 self._color_log(f"Conversion successful: {docx_path.name}", Color.green)
@@ -206,13 +250,16 @@ class DOCXExtractionCollection(ActionCollection):
             else:
                 raise RuntimeError("Conversion completed but output file not found")
 
-        except asyncio.TimeoutError as e:
+        except TimeoutError as e:
             self.logger.error("LibreOffice conversion timed out")
             raise RuntimeError("Conversion timed out after 60 seconds") from e
 
     # Modify the _extract_content_from_docx method to handle .doc files
     async def _extract_content_from_docx(
-        self, file_path: Path, extract_tables: bool = True, extract_headers_footers: bool = True
+        self,
+        file_path: Path,
+        extract_tables: bool = True,
+        extract_headers_footers: bool = True,
     ) -> dict[str, Any]:
         """Extract content from DOCX file using python-docx.
 
@@ -241,7 +288,9 @@ class DOCXExtractionCollection(ActionCollection):
                     if paragraph.text.strip():  # Skip empty paragraphs
                         para_data = {
                             "text": paragraph.text,
-                            "style": paragraph.style.name if paragraph.style else "Normal",
+                            "style": paragraph.style.name
+                            if paragraph.style
+                            else "Normal",
                         }
                         paragraphs.append(para_data)
 
@@ -271,7 +320,11 @@ class DOCXExtractionCollection(ActionCollection):
 
                         if header_text or footer_text:
                             headers_footers.append(
-                                {"section_index": section_idx, "header": header_text, "footer": footer_text}
+                                {
+                                    "section_index": section_idx,
+                                    "header": header_text,
+                                    "footer": footer_text,
+                                }
                             )
 
                 processing_time = time.time() - start_time
@@ -293,7 +346,10 @@ class DOCXExtractionCollection(ActionCollection):
         return await asyncio.to_thread(sync_extract)
 
     def _format_content_for_llm(
-        self, extraction_result: dict[str, Any], output_format: str, include_structure: bool = True
+        self,
+        extraction_result: dict[str, Any],
+        output_format: str,
+        include_structure: bool = True,
     ) -> str:
         """Format extracted DOCX content to be LLM-friendly.
 
@@ -312,13 +368,21 @@ class DOCXExtractionCollection(ActionCollection):
             if include_structure:
                 structure = extraction_result["structure"]
                 content_parts.append("# Document Structure\n")
-                content_parts.append(f"- **Paragraphs**: {structure['paragraphs_count']}\n")
+                content_parts.append(
+                    f"- **Paragraphs**: {structure['paragraphs_count']}\n"
+                )
                 content_parts.append(f"- **Tables**: {structure['tables_count']}\n")
                 content_parts.append(f"- **Sections**: {structure['sections_count']}\n")
-                content_parts.append(f"- **Word Count**: {extraction_result['word_count']}\n")
-                content_parts.append(f"- **Character Count**: {extraction_result['character_count']}\n")
+                content_parts.append(
+                    f"- **Word Count**: {extraction_result['word_count']}\n"
+                )
+                content_parts.append(
+                    f"- **Character Count**: {extraction_result['character_count']}\n"
+                )
                 if structure["styles_used"]:
-                    content_parts.append(f"- **Styles Used**: {', '.join(structure['styles_used'])}\n")
+                    content_parts.append(
+                        f"- **Styles Used**: {', '.join(structure['styles_used'])}\n"
+                    )
                 content_parts.append("\n---\n\n")
 
             # Add main content
@@ -365,13 +429,17 @@ class DOCXExtractionCollection(ActionCollection):
                 content_parts.append("\n## Headers and Footers\n\n")
                 for hf in extraction_result["headers_footers"]:
                     if hf["header"]:
-                        content_parts.append(f"**Header (Section {hf['section_index'] + 1}):**\n")
+                        content_parts.append(
+                            f"**Header (Section {hf['section_index'] + 1}):**\n"
+                        )
                         for header_line in hf["header"]:
                             content_parts.append(f"{header_line}\n")
                         content_parts.append("\n")
 
                     if hf["footer"]:
-                        content_parts.append(f"**Footer (Section {hf['section_index'] + 1}):**\n")
+                        content_parts.append(
+                            f"**Footer (Section {hf['section_index'] + 1}):**\n"
+                        )
                         for footer_line in hf["footer"]:
                             content_parts.append(f"{footer_line}\n")
                         content_parts.append("\n")
@@ -389,16 +457,27 @@ class DOCXExtractionCollection(ActionCollection):
             if include_structure:
                 html_parts.append("<h1>Document Structure</h1>")
                 structure = extraction_result["structure"]
-                html_parts.append(f"<p><strong>Paragraphs:</strong> {structure['paragraphs_count']}</p>")
-                html_parts.append(f"<p><strong>Tables:</strong> {structure['tables_count']}</p>")
-                html_parts.append(f"<p><strong>Word Count:</strong> {extraction_result['word_count']}</p>")
+                html_parts.append(
+                    f"<p><strong>Paragraphs:</strong> {structure['paragraphs_count']}</p>"
+                )
+                html_parts.append(
+                    f"<p><strong>Tables:</strong> {structure['tables_count']}</p>"
+                )
+                html_parts.append(
+                    f"<p><strong>Word Count:</strong> {extraction_result['word_count']}</p>"
+                )
                 html_parts.append("<hr>")
 
             html_parts.append("<h1>Document Content</h1>")
 
             # Add paragraphs
             for para in extraction_result["paragraphs"]:
-                text = para["text"].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                text = (
+                    para["text"]
+                    .replace("&", "&amp;")
+                    .replace("<", "&lt;")
+                    .replace(">", "&gt;")
+                )
                 style = para["style"]
 
                 if "Heading" in style:
@@ -424,7 +503,11 @@ class DOCXExtractionCollection(ActionCollection):
                         html_parts.append("<tr>")
                         tag = "th" if row_idx == 0 else "td"
                         for cell in row:
-                            cell_text = cell.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                            cell_text = (
+                                cell.replace("&", "&amp;")
+                                .replace("<", "&lt;")
+                                .replace(">", "&gt;")
+                            )
                             html_parts.append(f"<{tag}>{cell_text}</{tag}>")
                         html_parts.append("</tr>")
 
@@ -453,15 +536,26 @@ class DOCXExtractionCollection(ActionCollection):
 
     async def mcp_extract_docx_content(
         self,
-        file_path: str = Field(description="Path to the DOCX/DOC document file to extract content from"),
-        output_format: Literal["markdown", "json", "html", "text"] = Field(
-            default="markdown", description="Output format: 'markdown', 'json', 'html', or 'text'"
+        file_path: str = Field(
+            description="Path to the DOCX/DOC document file to extract content from"
         ),
-        extract_images: bool = Field(default=True, description="Whether to extract and save embedded images and media"),
-        extract_tables: bool = Field(default=True, description="Whether to extract table content"),
-        extract_headers_footers: bool = Field(default=True, description="Whether to extract headers and footers"),
+        output_format: Literal["markdown", "json", "html", "text"] = Field(
+            default="markdown",
+            description="Output format: 'markdown', 'json', 'html', or 'text'",
+        ),
+        extract_images: bool = Field(
+            default=True,
+            description="Whether to extract and save embedded images and media",
+        ),
+        extract_tables: bool = Field(
+            default=True, description="Whether to extract table content"
+        ),
+        extract_headers_footers: bool = Field(
+            default=True, description="Whether to extract headers and footers"
+        ),
         include_structure: bool = Field(
-            default=True, description="Whether to include document structure information in output"
+            default=True,
+            description="Whether to include document structure information in output",
         ),
     ) -> ActionResponse:
         """Extract content from DOCX/DOC documents using python-docx.
@@ -512,7 +606,9 @@ class DOCXExtractionCollection(ActionCollection):
 
             # Extract document content
             extraction_result = self._extract_content_from_docx(
-                file_path, extract_tables=extract_tables, extract_headers_footers=extract_headers_footers
+                file_path,
+                extract_tables=extract_tables,
+                extract_headers_footers=extract_headers_footers,
             )
 
             # Format content for LLM consumption
@@ -529,7 +625,9 @@ class DOCXExtractionCollection(ActionCollection):
                 absolute_path=str(file_path.absolute()),
                 page_count=None,  # Not directly available for DOCX
                 processing_time=extraction_result["processing_time"],
-                extracted_images=[media["path"] for media in saved_media if media["type"] == "image"],
+                extracted_images=[
+                    media["path"] for media in saved_media if media["type"] == "image"
+                ],
                 extracted_media=saved_media,
                 output_format=output_format,
                 llm_enhanced=False,
@@ -544,7 +642,9 @@ class DOCXExtractionCollection(ActionCollection):
                 "word_count": extraction_result["word_count"],
                 "character_count": extraction_result["character_count"],
                 "styles_used": extraction_result["structure"]["styles_used"],
-                "has_headers_footers": extraction_result["structure"]["has_headers_footers"],
+                "has_headers_footers": extraction_result["structure"][
+                    "has_headers_footers"
+                ],
                 "has_embedded_media": len(saved_media) > 0,
                 "media_files_count": len(saved_media),
             }
@@ -559,12 +659,16 @@ class DOCXExtractionCollection(ActionCollection):
                 Color.green,
             )
 
-            return ActionResponse(success=True, message=formatted_content, metadata=final_metadata)
+            return ActionResponse(
+                success=True, message=formatted_content, metadata=final_metadata
+            )
 
         except FileNotFoundError as e:
             self.logger.error(f"File not found: {str(e)}")
             return ActionResponse(
-                success=False, message=f"File not found: {str(e)}", metadata={"error_type": "file_not_found"}
+                success=False,
+                message=f"File not found: {str(e)}",
+                metadata={"error_type": "file_not_found"},
             )
         except ValueError as e:
             self.logger.error(f"Invalid input: {str(e)}")
@@ -581,7 +685,9 @@ class DOCXExtractionCollection(ActionCollection):
                 metadata={"error_type": "missing_dependency"},
             )
         except Exception as e:
-            self.logger.error(f"DOCX extraction failed: {str(e)}: {traceback.format_exc()}")
+            self.logger.error(
+                f"DOCX extraction failed: {str(e)}: {traceback.format_exc()}"
+            )
             return ActionResponse(
                 success=False,
                 message=f"DOCX extraction failed: {str(e)}",
@@ -600,13 +706,19 @@ class DOCXExtractionCollection(ActionCollection):
         }
 
         format_list = "\n".join(
-            [f"**{format_name}**: {description}" for format_name, description in supported_formats.items()]
+            [
+                f"**{format_name}**: {description}"
+                for format_name, description in supported_formats.items()
+            ]
         )
 
         return ActionResponse(
             success=True,
             message=f"Supported DOCX/DOC formats:\n\n{format_list}",
-            metadata={"supported_formats": list(supported_formats.keys()), "total_formats": len(supported_formats)},
+            metadata={
+                "supported_formats": list(supported_formats.keys()),
+                "total_formats": len(supported_formats),
+            },
         )
 
 

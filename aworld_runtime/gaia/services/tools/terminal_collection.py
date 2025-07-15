@@ -101,7 +101,9 @@ class TerminalCollection(ActionCollection):
         }
 
         self._color_log("Terminal service initialized", Color.green, "debug")
-        self._color_log(f"Platform: {self.platform_info['system']}", Color.blue, "debug")
+        self._color_log(
+            f"Platform: {self.platform_info['system']}", Color.blue, "debug"
+        )
 
     def _check_command_safety(self, command: str) -> tuple[bool, str | None]:
         """Check if command is safe to execute.
@@ -120,7 +122,9 @@ class TerminalCollection(ActionCollection):
 
         return True, None
 
-    def _format_command_output(self, result: CommandResult, output_format: str = "markdown") -> str:
+    def _format_command_output(
+        self, result: CommandResult, output_format: str = "markdown"
+    ) -> str:
         """Format command execution results for LLM consumption.
 
         Args:
@@ -162,10 +166,14 @@ class TerminalCollection(ActionCollection):
             ]
 
             if result.stdout:
-                output_parts.extend(["\n## Output", "```", result.stdout.strip(), "```"])
+                output_parts.extend(
+                    ["\n## Output", "```", result.stdout.strip(), "```"]
+                )
 
             if result.stderr:
-                output_parts.extend(["\n## Errors/Warnings", "```", result.stderr.strip(), "```"])
+                output_parts.extend(
+                    ["\n## Errors/Warnings", "```", result.stderr.strip(), "```"]
+                )
 
             return "\n".join(output_parts)
 
@@ -185,7 +193,10 @@ class TerminalCollection(ActionCollection):
             # Create appropriate subprocess for platform
             if self.platform_info["system"] == "Windows":
                 process = await asyncio.create_subprocess_shell(
-                    command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, shell=True
+                    command,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    shell=True,
                 )
             else:
                 process = await asyncio.create_subprocess_shell(
@@ -261,8 +272,13 @@ class TerminalCollection(ActionCollection):
     async def mcp_execute_command(
         self,
         command: str = Field(description="Terminal command to execute"),
-        timeout: int = Field(default=30, description="Command timeout in seconds (default: 30)"),
-        output_format: str = Field(default="markdown", description="Output format: 'markdown', 'json', or 'text'"),
+        timeout: int = Field(
+            default=30, description="Command timeout in seconds (default: 30)"
+        ),
+        output_format: str = Field(
+            default="markdown",
+            description="Output format: 'markdown', 'json', or 'text'",
+        ),
     ) -> ActionResponse:
         """Execute a terminal command with safety checks and timeout controls.
 
@@ -335,10 +351,17 @@ class TerminalCollection(ActionCollection):
             if result.success:
                 self._color_log("✅ Command completed successfully", Color.green)
             else:
-                self._color_log(f"❌ Command failed with return code {result.return_code}", Color.red)
+                self._color_log(
+                    f"❌ Command failed with return code {result.return_code}",
+                    Color.red,
+                )
                 metadata.error_type = "execution_failure"
 
-            return ActionResponse(success=result.success, message=formatted_output, metadata=metadata.model_dump())
+            return ActionResponse(
+                success=result.success,
+                message=formatted_output,
+                metadata=metadata.model_dump(),
+            )
 
         except Exception as e:
             error_msg = f"Failed to execute command: {str(e)}"
@@ -359,8 +382,13 @@ class TerminalCollection(ActionCollection):
 
     async def mcp_get_command_history(
         self,
-        count: int = Field(default=10, description="Number of recent commands to return (default: 10)"),
-        output_format: str = Field(default="markdown", description="Output format: 'markdown', 'json', or 'text'"),
+        count: int = Field(
+            default=10, description="Number of recent commands to return (default: 10)"
+        ),
+        output_format: str = Field(
+            default="markdown",
+            description="Output format: 'markdown', 'json', or 'text'",
+        ),
     ) -> ActionResponse:
         """Retrieve recent command execution history.
 
@@ -379,7 +407,9 @@ class TerminalCollection(ActionCollection):
 
         try:
             # Get recent history
-            recent_history = self.command_history[-count:] if self.command_history else []
+            recent_history = (
+                self.command_history[-count:] if self.command_history else []
+            )
 
             if not recent_history:
                 message = "No command history available."
@@ -396,7 +426,10 @@ class TerminalCollection(ActionCollection):
                         )
                     message = "\n".join(history_lines)
                 else:  # markdown
-                    history_lines = ["# Command History", f"Showing {len(recent_history)} recent commands:\n"]
+                    history_lines = [
+                        "# Command History",
+                        f"Showing {len(recent_history)} recent commands:\n",
+                    ]
 
                     for i, entry in enumerate(recent_history, 1):
                         status_emoji = "✅" if entry["success"] else "❌"
@@ -419,7 +452,9 @@ class TerminalCollection(ActionCollection):
                 history_count=len(recent_history),
             )
 
-            return ActionResponse(success=True, message=message, metadata=metadata.model_dump())
+            return ActionResponse(
+                success=True, message=message, metadata=metadata.model_dump()
+            )
 
         except Exception as e:
             error_msg = f"Failed to retrieve command history: {str(e)}"
@@ -470,7 +505,7 @@ class TerminalCollection(ActionCollection):
         }
 
         formatted_info = f"""# Terminal Service Capabilities
-        
+
         ## Platform Information
         - **System:** {self.platform_info["system"]}
         - **Platform:** {self.platform_info["platform"]}
@@ -492,7 +527,9 @@ class TerminalCollection(ActionCollection):
         {chr(10).join(f"- {feature}" for feature in capabilities["safety_features"])}
         """
 
-        return ActionResponse(success=True, message=formatted_info, metadata=capabilities)
+        return ActionResponse(
+            success=True, message=formatted_info, metadata=capabilities
+        )
 
 
 # Default arguments for testing

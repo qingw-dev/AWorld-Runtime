@@ -22,15 +22,25 @@ class AudioMetadata(BaseModel):
     file_size: int = Field(description="File size in bytes")
     file_type: str = Field(description="Audio file type/extension")
     absolute_path: str = Field(description="Absolute path to the audio file")
-    duration: float | None = Field(default=None, description="Duration of audio in seconds")
+    duration: float | None = Field(
+        default=None, description="Duration of audio in seconds"
+    )
     sample_rate: int | None = Field(default=None, description="Audio sample rate in Hz")
     channels: int | None = Field(default=None, description="Number of audio channels")
     bitrate: int | None = Field(default=None, description="Audio bitrate in kbps")
     codec: str | None = Field(default=None, description="Audio codec used")
-    processing_time: float = Field(description="Time taken to process the audio in seconds")
-    output_files: list[str] = Field(default_factory=list, description="Paths to generated output files")
-    transcription: str | None = Field(default=None, description="Transcribed text from audio")
-    word_count: int | None = Field(default=None, description="Number of words in transcription")
+    processing_time: float = Field(
+        description="Time taken to process the audio in seconds"
+    )
+    output_files: list[str] = Field(
+        default_factory=list, description="Paths to generated output files"
+    )
+    transcription: str | None = Field(
+        default=None, description="Transcribed text from audio"
+    )
+    word_count: int | None = Field(
+        default=None, description="Number of words in transcription"
+    )
     output_format: str = Field(description="Format of the processed output")
 
 
@@ -68,7 +78,9 @@ class AudioCollection(ActionCollection):
         }
 
         self._color_log("Audio Processing Service initialized", Color.green, "debug")
-        self._color_log(f"Audio output directory: {self._audio_output_dir}", Color.blue, "debug")
+        self._color_log(
+            f"Audio output directory: {self._audio_output_dir}", Color.blue, "debug"
+        )
 
         # Check ffmpeg availability
         self._check_ffmpeg_availability()
@@ -80,7 +92,13 @@ class AudioCollection(ActionCollection):
             bool: True if ffmpeg is available, False otherwise
         """
         try:
-            result = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True, timeout=10, check=False)
+            result = subprocess.run(
+                ["ffmpeg", "-version"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            )
             if result.returncode == 0:
                 self._color_log("FFmpeg is available", Color.green, "debug")
             else:
@@ -122,7 +140,9 @@ class AudioCollection(ActionCollection):
         _, stderr = await process.communicate()
 
         if process.returncode != 0:
-            raise RuntimeError(f"Audio preparation for transcription failed: {stderr.decode()}")
+            raise RuntimeError(
+                f"Audio preparation for transcription failed: {stderr.decode()}"
+            )
 
         return output_path
 
@@ -137,7 +157,8 @@ class AudioCollection(ActionCollection):
         """
         try:
             client: AsyncOpenAI = AsyncOpenAI(
-                api_key=os.getenv("AUDIO_LLM_API_KEY"), base_url=os.getenv("AUDIO_LLM_BASE_URL")
+                api_key=os.getenv("AUDIO_LLM_API_KEY"),
+                base_url=os.getenv("AUDIO_LLM_BASE_URL"),
             )
 
             # Use the file for transcription
@@ -150,7 +171,9 @@ class AudioCollection(ActionCollection):
 
             return {"text": transcription.strip() if transcription else ""}
         except Exception as e:
-            raise RuntimeError(f"Audio transcription failed: {e}: {traceback.format_exc()}") from e
+            raise RuntimeError(
+                f"Audio transcription failed: {e}: {traceback.format_exc()}"
+            ) from e
 
     async def _get_audio_metadata(self, file_path: Path) -> dict[str, Any]:
         """Extract audio metadata using ffprobe.
@@ -162,7 +185,16 @@ class AudioCollection(ActionCollection):
             Dictionary containing audio metadata
         """
         try:
-            cmd = ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", str(file_path)]
+            cmd = [
+                "ffprobe",
+                "-v",
+                "quiet",
+                "-print_format",
+                "json",
+                "-show_format",
+                "-show_streams",
+                str(file_path),
+            ]
             process = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
@@ -176,13 +208,21 @@ class AudioCollection(ActionCollection):
                 # Extract relevant audio information
                 format_info = metadata.get("format", {})
                 streams = metadata.get("streams", [])
-                audio_stream = next((s for s in streams if s.get("codec_type") == "audio"), {})
+                audio_stream = next(
+                    (s for s in streams if s.get("codec_type") == "audio"), {}
+                )
 
                 return {
                     "duration": float(format_info.get("duration", 0)),
-                    "sample_rate": int(audio_stream.get("sample_rate", 0)) if audio_stream.get("sample_rate") else None,
-                    "channels": int(audio_stream.get("channels", 0)) if audio_stream.get("channels") else None,
-                    "bitrate": int(format_info.get("bit_rate", 0)) // 1000 if format_info.get("bit_rate") else None,
+                    "sample_rate": int(audio_stream.get("sample_rate", 0))
+                    if audio_stream.get("sample_rate")
+                    else None,
+                    "channels": int(audio_stream.get("channels", 0))
+                    if audio_stream.get("channels")
+                    else None,
+                    "bitrate": int(format_info.get("bit_rate", 0)) // 1000
+                    if format_info.get("bit_rate")
+                    else None,
                     "codec": audio_stream.get("codec_name"),
                 }
             else:
@@ -193,7 +233,9 @@ class AudioCollection(ActionCollection):
             self.logger.error(f"Error extracting audio metadata: {str(e)}")
             return {}
 
-    async def _trim_audio(self, input_path: Path, start_time: float, duration: float | None = None) -> Path:
+    async def _trim_audio(
+        self, input_path: Path, start_time: float, duration: float | None = None
+    ) -> Path:
         """Trim audio file to specified time range.
 
         Args:
@@ -204,7 +246,9 @@ class AudioCollection(ActionCollection):
         Returns:
             Path to trimmed audio file
         """
-        output_path = self._audio_output_dir / f"{input_path.stem}_trimmed{input_path.suffix}"
+        output_path = (
+            self._audio_output_dir / f"{input_path.stem}_trimmed{input_path.suffix}"
+        )
 
         cmd = ["ffmpeg", "-i", str(input_path), "-ss", str(start_time), "-y"]
 
@@ -279,7 +323,11 @@ class AudioCollection(ActionCollection):
             file_stats = file_path.stat()
 
             # Count words in transcription
-            word_count = len(transcription_result["text"].split()) if transcription_result["text"] else 0
+            word_count = (
+                len(transcription_result["text"].split())
+                if transcription_result["text"]
+                else 0
+            )
 
             # Create metadata object
             audio_metadata = AudioMetadata(
@@ -304,7 +352,9 @@ class AudioCollection(ActionCollection):
                 result_message = transcription_result["text"]
             elif output_format == "detailed":
                 confidence_str = (
-                    f"{transcription_result['confidence']:.2f}" if transcription_result["confidence"] else "N/A"
+                    f"{transcription_result['confidence']:.2f}"
+                    if transcription_result["confidence"]
+                    else "N/A"
                 )
                 result_message = (
                     f"Transcription Results for {file_path.name}:\n\n"
@@ -336,12 +386,21 @@ class AudioCollection(ActionCollection):
             except Exception:
                 pass  # Ignore cleanup errors
 
-            self._color_log(f"Transcription completed: {word_count} words, {processing_time:.2f}s", Color.green)
+            self._color_log(
+                f"Transcription completed: {word_count} words, {processing_time:.2f}s",
+                Color.green,
+            )
 
-            return ActionResponse(success=True, message=result_message, metadata=audio_metadata.model_dump())
+            return ActionResponse(
+                success=True,
+                message=result_message,
+                metadata=audio_metadata.model_dump(),
+            )
 
         except Exception as e:
-            self.logger.error(f"Audio transcription failed: {str(e)}: {traceback.format_exc()}")
+            self.logger.error(
+                f"Audio transcription failed: {str(e)}: {traceback.format_exc()}"
+            )
             return ActionResponse(
                 success=False,
                 message=f"Audio transcription failed: {str(e)}",
@@ -408,12 +467,20 @@ class AudioCollection(ActionCollection):
                 f"Format: {file_path.suffix.upper()}"
             )
 
-            self._color_log(f"Metadata extraction completed in {processing_time:.2f}s", Color.green)
+            self._color_log(
+                f"Metadata extraction completed in {processing_time:.2f}s", Color.green
+            )
 
-            return ActionResponse(success=True, message=result_message, metadata=audio_metadata.model_dump())
+            return ActionResponse(
+                success=True,
+                message=result_message,
+                metadata=audio_metadata.model_dump(),
+            )
 
         except Exception as e:
-            self.logger.error(f"Metadata extraction failed: {str(e)}: {traceback.format_exc()}")
+            self.logger.error(
+                f"Metadata extraction failed: {str(e)}: {traceback.format_exc()}"
+            )
             return ActionResponse(
                 success=False,
                 message=f"Metadata extraction failed: {str(e)}",
@@ -424,7 +491,9 @@ class AudioCollection(ActionCollection):
         self,
         file_path: str = Field(description="Path to the audio file to trim"),
         start_time: float = Field(description="Start time in seconds"),
-        duration: float | None = Field(default=None, description="Duration in seconds (if None, trim to end)"),
+        duration: float | None = Field(
+            default=None, description="Duration in seconds (if None, trim to end)"
+        ),
     ) -> ActionResponse:
         """Trim audio file to specified time range.
 
@@ -461,7 +530,10 @@ class AudioCollection(ActionCollection):
                 raise ValueError("Start time cannot be negative")
             if duration is not None and duration <= 0:
                 raise ValueError("Duration must be positive")
-            if original_metadata.get("duration") and start_time >= original_metadata["duration"]:
+            if (
+                original_metadata.get("duration")
+                and start_time >= original_metadata["duration"]
+            ):
                 raise ValueError("Start time exceeds audio duration")
 
             # Trim audio
@@ -490,7 +562,9 @@ class AudioCollection(ActionCollection):
                 output_format="trimmed_audio",
             )
 
-            end_time = start_time + (duration or (original_metadata.get("duration", 0) - start_time))
+            end_time = start_time + (
+                duration or (original_metadata.get("duration", 0) - start_time)
+            )
             result_message = (
                 f"Successfully trimmed {file_path.name}\n"
                 f"Original duration: {original_metadata.get('duration', 0):.2f} seconds\n"
@@ -499,14 +573,24 @@ class AudioCollection(ActionCollection):
                 f"Output file: {output_path.name}"
             )
 
-            self._color_log(f"Audio trimming completed in {processing_time:.2f}s", Color.green)
+            self._color_log(
+                f"Audio trimming completed in {processing_time:.2f}s", Color.green
+            )
 
-            return ActionResponse(success=True, message=result_message, metadata=audio_metadata.model_dump())
+            return ActionResponse(
+                success=True,
+                message=result_message,
+                metadata=audio_metadata.model_dump(),
+            )
 
         except Exception as e:
-            self.logger.error(f"Audio trimming failed: {str(e)}: {traceback.format_exc()}")
+            self.logger.error(
+                f"Audio trimming failed: {str(e)}: {traceback.format_exc()}"
+            )
             return ActionResponse(
-                success=False, message=f"Audio trimming failed: {str(e)}", metadata={"error_type": "trimming_error"}
+                success=False,
+                message=f"Audio trimming failed: {str(e)}",
+                metadata={"error_type": "trimming_error"},
             )
 
     def mcp_list_supported_formats(self) -> ActionResponse:
@@ -531,7 +615,10 @@ class AudioCollection(ActionCollection):
         }
 
         format_list = "\n".join(
-            [f"**{format_name}**: {description}" for format_name, description in supported_formats.items()]
+            [
+                f"**{format_name}**: {description}"
+                for format_name, description in supported_formats.items()
+            ]
         )
 
         return ActionResponse(

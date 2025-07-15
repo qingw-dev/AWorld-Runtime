@@ -3,18 +3,19 @@ import os
 from pathlib import Path
 from typing import Any, Literal
 
-from aworld.logs.util import Color
 from mcp.server import FastMCP
 from pydantic import BaseModel, Field
 
-from ...logging_utils import color_log, setup_logger
+from ...logging_utils import Color, color_log, setup_logger
 
 
 class ActionArguments(BaseModel):
     """Protocol: MCP Action Arguments"""
 
     name: str = Field(description="The name of the action")
-    transport: Literal["stdio", "sse"] = Field(default="stdio", description="The transport of the action")
+    transport: Literal["stdio", "sse"] = Field(
+        default="stdio", description="The transport of the action"
+    )
     port: int = Field(default=8000, description="The port for the SSE server")
     workspace: str | None = Field(
         default=None,
@@ -26,9 +27,13 @@ class ActionArguments(BaseModel):
 class ActionResponse(BaseModel):
     """Protocol: MCP Action Response"""
 
-    success: bool = Field(default=False, description="Whether the action is successfully executed")
+    success: bool = Field(
+        default=False, description="Whether the action is successfully executed"
+    )
     message: Any = Field(default=None, description="The execution result of the action")
-    metadata: dict[str, Any] = Field(default_factory=dict, description="The metadata of the action")
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="The metadata of the action"
+    )
 
 
 class ActionCollection:
@@ -45,7 +50,9 @@ class ActionCollection:
 
         self.workspace: Path = self._obtain_valid_workspace(arguments.workspace)
 
-        self.logger: logging.Logger = setup_logger(self.__class__.__name__, str(self.workspace))
+        self.logger: logging.Logger = setup_logger(
+            self.__class__.__name__, str(self.workspace)
+        )
 
         self.server = FastMCP(arguments.name)
         for tool_name in dir(self):
@@ -61,9 +68,12 @@ class ActionCollection:
         if self.transport == "stdio":
             self.server.run(transport="stdio")
         elif self.transport == "sse":
-            self.server.run(transport="sse", port=self.port)
+            self.server.settings.port = self.port
+            self.server.run(transport="sse")
 
-    def _color_log(self, value: str, color: Color | None = None, level: str = "info") -> None:
+    def _color_log(
+        self, value: str, color: Color | None = None, level: str = "info"
+    ) -> None:
         color_log(self.logger, value, color, level=level)
 
     def _obtain_valid_workspace(self, workspace: str | None) -> Path:
@@ -76,7 +86,9 @@ class ActionCollection:
             if path.is_dir():
                 return path
 
-        self._color_log("Invalid or no workspace specified, using home directory.", Color.yellow)
+        self._color_log(
+            "Invalid or no workspace specified, using home directory.", Color.yellow
+        )
         return Path.home().expanduser().resolve()
 
     def _validate_file_path(self, file_path: str) -> Path:

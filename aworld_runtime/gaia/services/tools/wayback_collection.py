@@ -57,7 +57,9 @@ class WaybackMetadata(BaseModel):
     truncated: bool = False
     execution_time: float | None = None
     error_type: str | None = None
-    user_agent: str = "AWorld/1.0 (https://github.com/inclusionAI/AWorld; qintong.wqt@antgroup.com)"
+    user_agent: str = (
+        "AWorld/1.0 (https://github.com/inclusionAI/AWorld; qintong.wqt@antgroup.com)"
+    )
 
 
 class WaybackCollection(ActionCollection):
@@ -82,7 +84,9 @@ class WaybackCollection(ActionCollection):
         self._color_log("Wayback Machine service initialized", Color.green, "debug")
         self._color_log(f"User Agent: {self.user_agent}", Color.blue, "debug")
 
-    def _format_versions_for_llm(self, versions: list[ArchivedVersion], query_info: dict) -> str:
+    def _format_versions_for_llm(
+        self, versions: list[ArchivedVersion], query_info: dict
+    ) -> str:
         """Format archived versions list for LLM consumption.
 
         Args:
@@ -124,7 +128,9 @@ class WaybackCollection(ActionCollection):
 
         return "\n".join(output_parts)
 
-    def _format_content_for_llm(self, content_data: dict, output_format: str = "markdown") -> str:
+    def _format_content_for_llm(
+        self, content_data: dict, output_format: str = "markdown"
+    ) -> str:
         """Format archived content for LLM consumption.
 
         Args:
@@ -149,12 +155,16 @@ class WaybackCollection(ActionCollection):
             ]
 
             if content_data.get("truncated"):
-                output_parts.append(f"**Note:** Content truncated to {self.max_content_length:,} characters")
+                output_parts.append(
+                    f"**Note:** Content truncated to {self.max_content_length:,} characters"
+                )
 
             if content_data.get("extract_text_only"):
                 output_parts.append("**Note:** Text-only extraction applied")
 
-            output_parts.extend(["\n## Content:", "\n---\n", content_data.get("content", ""), "\n---"])
+            output_parts.extend(
+                ["\n## Content:", "\n---\n", content_data.get("content", ""), "\n---"]
+            )
 
             return "\n".join(output_parts)
 
@@ -175,7 +185,9 @@ class WaybackCollection(ActionCollection):
         except (ValueError, TypeError):
             return timestamp or "Unknown"
 
-    def _validate_wayback_parameters(self, url: str, timestamp: str = None) -> tuple[str, str | None]:
+    def _validate_wayback_parameters(
+        self, url: str, timestamp: str = None
+    ) -> tuple[str, str | None]:
         """Validate and normalize Wayback Machine parameters.
 
         Args:
@@ -206,11 +218,22 @@ class WaybackCollection(ActionCollection):
 
     async def mcp_list_archived_versions(
         self,
-        url: str = Field(description="The URL of the website to check for archived versions"),
-        limit: int = Field(default=10, description="Maximum number of versions to return (0 for all)"),
-        from_date: str | None = Field(default=None, description="Start date filter (YYYYMMDDhhmmss)"),
-        to_date: str | None = Field(default=None, description="End date filter (YYYYMMDDhhmmss)"),
-        output_format: str = Field(default="markdown", description="Output format: 'markdown', 'json', or 'text'"),
+        url: str = Field(
+            description="The URL of the website to check for archived versions"
+        ),
+        limit: int = Field(
+            default=10, description="Maximum number of versions to return (0 for all)"
+        ),
+        from_date: str | None = Field(
+            default=None, description="Start date filter (YYYYMMDDhhmmss)"
+        ),
+        to_date: str | None = Field(
+            default=None, description="End date filter (YYYYMMDDhhmmss)"
+        ),
+        output_format: str = Field(
+            default="markdown",
+            description="Output format: 'markdown', 'json', or 'text'",
+        ),
     ) -> ActionResponse:
         """List available archived versions of a URL from the Wayback Machine.
 
@@ -256,7 +279,8 @@ class WaybackCollection(ActionCollection):
                 snapshots = [
                     s
                     for s in all_snapshots
-                    if (not from_date or s.timestamp >= from_date) and (not to_date or s.timestamp <= to_date)
+                    if (not from_date or s.timestamp >= from_date)
+                    and (not to_date or s.timestamp <= to_date)
                 ]
             else:
                 snapshots = all_snapshots
@@ -293,7 +317,12 @@ class WaybackCollection(ActionCollection):
                 versions = versions[:limit]
 
             # Format output
-            query_info = {"url": url, "from_date": from_date, "to_date": to_date, "total_found": len(snapshots)}
+            query_info = {
+                "url": url,
+                "from_date": from_date,
+                "to_date": to_date,
+                "total_found": len(snapshots),
+            }
 
             if output_format == "json":
                 message = [version.model_dump() for version in versions]
@@ -301,7 +330,10 @@ class WaybackCollection(ActionCollection):
                 message = self._format_versions_for_llm(versions, query_info)
 
             execution_time = time.time() - start_time
-            self._color_log(f"Found {len(versions)} archived versions in {execution_time:.2f}s", Color.green)
+            self._color_log(
+                f"Found {len(versions)} archived versions in {execution_time:.2f}s",
+                Color.green,
+            )
 
             return ActionResponse(
                 success=True,
@@ -318,7 +350,9 @@ class WaybackCollection(ActionCollection):
         except Exception as e:
             error_msg = f"Failed to list archived versions: {str(e)}"
             self._color_log(error_msg, Color.red)
-            self.logger.error(f"Error in mcp_list_archived_versions: {traceback.format_exc()}")
+            self.logger.error(
+                f"Error in mcp_list_archived_versions: {traceback.format_exc()}"
+            )
 
             return ActionResponse(
                 success=False,
@@ -333,11 +367,22 @@ class WaybackCollection(ActionCollection):
 
     async def mcp_get_archived_content(
         self,
-        url: str = Field(description="The URL of the website to fetch archived content from"),
-        timestamp: str = Field(description="The timestamp of the desired version (YYYYMMDDhhmmss)"),
-        extract_text_only: bool = Field(default=True, description="Extract only text content, removing HTML tags"),
-        truncate_content: bool = Field(default=False, description="Truncate content to manageable length for LLMs"),
-        output_format: str = Field(default="markdown", description="Output format: 'markdown', 'json', or 'text'"),
+        url: str = Field(
+            description="The URL of the website to fetch archived content from"
+        ),
+        timestamp: str = Field(
+            description="The timestamp of the desired version (YYYYMMDDhhmmss)"
+        ),
+        extract_text_only: bool = Field(
+            default=True, description="Extract only text content, removing HTML tags"
+        ),
+        truncate_content: bool = Field(
+            default=False, description="Truncate content to manageable length for LLMs"
+        ),
+        output_format: str = Field(
+            default="markdown",
+            description="Output format: 'markdown', 'json', or 'text'",
+        ),
     ) -> ActionResponse:
         """Fetch content from a specific archived page version.
 
@@ -372,7 +417,9 @@ class WaybackCollection(ActionCollection):
             # Validate parameters
             url, timestamp = self._validate_wayback_parameters(url, timestamp)
 
-            self._color_log(f"Fetching archived content: {url} at {timestamp}", Color.blue)
+            self._color_log(
+                f"Fetching archived content: {url} at {timestamp}", Color.blue
+            )
 
             # Query Wayback Machine for closest snapshot
             cdx_api = WaybackMachineCDXServerAPI(url, user_agent=self.user_agent)
@@ -428,7 +475,10 @@ class WaybackCollection(ActionCollection):
                 message = self._format_content_for_llm(content_data, output_format)
 
             execution_time = time.time() - start_time
-            self._color_log(f"Retrieved {len(content):,} characters in {execution_time:.2f}s", Color.green)
+            self._color_log(
+                f"Retrieved {len(content):,} characters in {execution_time:.2f}s",
+                Color.green,
+            )
 
             return ActionResponse(
                 success=True,
@@ -447,7 +497,9 @@ class WaybackCollection(ActionCollection):
         except Exception as e:
             error_msg = f"Failed to fetch archived content: {str(e)}"
             self._color_log(error_msg, Color.red)
-            self.logger.error(f"Error in mcp_get_archived_content: {traceback.format_exc()}")
+            self.logger.error(
+                f"Error in mcp_get_archived_content: {traceback.format_exc()}"
+            )
 
             return ActionResponse(
                 success=False,
@@ -488,7 +540,10 @@ class WaybackCollection(ActionCollection):
                 "default_timeout": self.default_timeout,
                 "max_content_length": self.max_content_length,
             },
-            "limits": {"max_content_length": self.max_content_length, "request_timeout": self.default_timeout},
+            "limits": {
+                "max_content_length": self.max_content_length,
+                "request_timeout": self.default_timeout,
+            },
         }
 
         message = f"""# Wayback Machine Service Capabilities

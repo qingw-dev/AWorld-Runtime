@@ -3,12 +3,29 @@ import os
 import tempfile
 import traceback
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlparse
 
 import aiofiles
 import aiohttp
 import magic
 import requests
+from openai import AsyncOpenAI
+from pydantic import BaseModel
+
+
+class ModelResponse(BaseModel):
+    """Response model compatible with existing LLM interface."""
+
+    content: str
+    model: str | None = None
+    usage: dict[str, Any] | None = None
+
+
+class LLMExecption(BaseException):
+    """
+    Base exception class for LLM related errors.
+    """
 
 
 def is_url(path_or_url: str) -> bool:
@@ -99,7 +116,9 @@ async def get_file_from_source_async(
         try:
             async with aiohttp.ClientSession() as session:
                 # Make a HEAD request first to check content length
-                async with session.head(source, timeout=timeout, allow_redirects=True) as head_response:
+                async with session.head(
+                    source, timeout=timeout, allow_redirects=True
+                ) as head_response:
                     head_response.raise_for_status()
 
                     content_length = head_response.headers.get("content-length")
@@ -115,14 +134,18 @@ async def get_file_from_source_async(
 
                     content = await response.read()
                     if len(content) > max_size_bytes:
-                        raise ValueError(f"File size exceeds maximum allowed size ({max_size_mb} MB)")
+                        raise ValueError(
+                            f"File size exceeds maximum allowed size ({max_size_mb} MB)"
+                        )
 
             # Create temporary file
             parsed_url = urlparse(source)
             filename = os.path.basename(parsed_url.path) or "downloaded_file"
 
             suffix = Path(filename).suffix or ".tmp"
-            async with aiofiles.tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+            async with aiofiles.tempfile.NamedTemporaryFile(
+                delete=False, suffix=suffix
+            ) as temp_file:
                 await temp_file.write(content)
                 temp_path = temp_file.name
 
@@ -131,7 +154,9 @@ async def get_file_from_source_async(
             return temp_path, mime_type, content
 
         except aiohttp.ClientError as e:
-            raise aiohttp.ClientError(f"Failed to download file from URL: {e}: {traceback.format_exc()}")
+            raise aiohttp.ClientError(
+                f"Failed to download file from URL: {e}: {traceback.format_exc()}"
+            ) from e
         except Exception as e:
             raise OSError(f"Error processing URL: {e}: {traceback.format_exc()}") from e
 
@@ -154,7 +179,9 @@ async def get_file_from_source_async(
             async with aiofiles.open(file_path, "rb") as f:
                 content = await f.read()
         except Exception as e:
-            raise OSError(f"Cannot read file {source}: {e}: {traceback.format_exc()}") from e
+            raise OSError(
+                f"Cannot read file {source}: {e}: {traceback.format_exc()}"
+            ) from e
 
         mime_type = await asyncio.to_thread(get_mime_type, str(file_path))
 
@@ -209,7 +236,9 @@ def get_file_from_source(
             content = b""
             for chunk in response.iter_content(chunk_size=8192):
                 if len(content) + len(chunk) > max_size_bytes:
-                    raise ValueError(f"File size exceeds maximum allowed size ({max_size_mb} MB)")
+                    raise ValueError(
+                        f"File size exceeds maximum allowed size ({max_size_mb} MB)"
+                    )
                 content += chunk
 
             # Create temporary file
@@ -228,7 +257,9 @@ def get_file_from_source(
             return temp_path, mime_type, content
 
         except requests.RequestException as e:
-            raise requests.RequestException(f"Failed to download file from URL: {e}: {traceback.format_exc()}")
+            raise requests.RequestException(
+                f"Failed to download file from URL: {e}: {traceback.format_exc()}"
+            ) from e
         except Exception as e:
             raise OSError(f"Error processing URL: {e}: {traceback.format_exc()}") from e
 
@@ -255,9 +286,149 @@ def get_file_from_source(
             with open(file_path, "rb") as f:
                 content = f.read()
         except Exception as e:
-            raise OSError(f"Cannot read file {source}: {e}: {traceback.format_exc()}") from e
+            raise OSError(
+                f"Cannot read file {source}: {e}: {traceback.format_exc()}"
+            ) from e
 
         # Get MIME type
         mime_type = get_mime_type(str(file_path))
 
         return str(file_path), mime_type, content
+
+
+async def call_openai_vision_model(
+    messages: list[dict[str, Any]],
+    model: str = "google/gemini-2.5-pro",
+    temperature: float = 1.0,
+    max_tokens: int | None = None,
+    api_key: str | None = None,
+    base_url: str | None = None,
+) -> ModelResponse:
+    """
+    Asynchronous OpenAI vision model call for image analysis.
+
+    This function provides a direct replacement for the current LLM interface,
+    specifically designed for vision tasks with image inputs.
+
+    Args:
+        messages: List of message dictionaries with text and image content
+        model: OpenAI model name (default: google/gemini-2.5-pro for vision)
+        temperature: Model temperature for response variability
+        max_tokens: Maximum tokens in response
+        api_key: OpenAI API key (defaults to LLM_API_KEY env var)
+        base_url: Custom base URL (defaults to LLM_BASE_URL env var)
+
+    Returns:
+        ModelResponse: Response object with content attribute
+
+    Raises:
+        Exception: If API call fails
+
+    Example:
+        ```python
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "What's in this image?"},
+                    {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,..."}}
+                ]
+            }
+        ]
+        response = await call_openai_vision_model(messages)
+        print(response.content)
+        ```
+    """
+    try:
+        # Initialize OpenAI client
+        client = AsyncOpenAI(
+            api_key=api_key or os.getenv("LLM_API_KEY"),
+            base_url=base_url or os.getenv("LLM_BASE_URL"),
+        )
+
+        # Make async call using asyncio.to_thread to avoid blocking
+        response = await client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+
+        # Extract content from response
+        content = response.choices[0].message.content or ""
+
+        # Prepare usage information if available
+        usage = None
+        if hasattr(response, "usage") and response.usage:
+            usage = {
+                "prompt_tokens": response.usage.prompt_tokens,
+                "completion_tokens": response.usage.completion_tokens,
+                "total_tokens": response.usage.total_tokens,
+            }
+
+        return ModelResponse(content=content, model=response.model, usage=usage)
+
+    except Exception as e:
+        raise LLMExecption(
+            f"OpenAI API call failed: {e}: {traceback.format_exc()}"
+        ) from e
+
+
+async def call_openai_text_model(
+    messages: list[dict[str, Any]],
+    model: str = "google/gemini-2.5-pro",
+    temperature: float = 1.0,
+    max_tokens: int | None = None,
+    api_key: str | None = None,
+    base_url: str | None = None,
+) -> ModelResponse:
+    """
+    Asynchronous OpenAI text model call for text-only tasks.
+
+    Args:
+        messages: List of message dictionaries with text content
+        model: OpenAI model name (default: google/gemini-2.5-pro for text)
+        temperature: Model temperature for response variability
+        max_tokens: Maximum tokens in response
+        api_key: OpenAI API key (defaults to LLM_API_KEY env var)
+        base_url: Custom base URL (defaults to LLM_BASE_URL env var)
+
+    Returns:
+        ModelResponse: Response object with content attribute
+
+    Raises:
+        Exception: If API call fails
+    """
+    try:
+        # Initialize OpenAI client
+        client = AsyncOpenAI(
+            api_key=api_key or os.getenv("LLM_API_KEY"),
+            base_url=base_url or os.getenv("LLM_BASE_URL"),
+        )
+
+        # Make async call using asyncio.to_thread to avoid blocking
+        response = await client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+
+        # Extract content from response
+        content = response.choices[0].message.content or ""
+
+        # Prepare usage information if available
+        usage = None
+        if hasattr(response, "usage") and response.usage:
+            usage = {
+                "prompt_tokens": response.usage.prompt_tokens,
+                "completion_tokens": response.usage.completion_tokens,
+                "total_tokens": response.usage.total_tokens,
+            }
+
+        return ModelResponse(content=content, model=response.model, usage=usage)
+
+    except Exception as e:
+        raise LLMExecption(
+            f"OpenAI API call failed: {e}: {traceback.format_exc()}"
+        ) from e

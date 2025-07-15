@@ -1,6 +1,6 @@
 [project]
 name = "aworld-runtime"
-version = "0.1.0"
+version = "0.1.1"
 description = "Scaling Agent Training via Runtime Definitions and Parallelizations"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -57,6 +57,7 @@ exclude = [
 ]
 [tool.uv]
 dev-dependencies = [
+    "aioresponses>=0.7.8",
     "anyio>=4.4.0",
     "black>=24.0.0",
     "mypy>=1.8.0",

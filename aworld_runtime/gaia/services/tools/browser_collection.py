@@ -88,8 +88,16 @@ class BrowserCollection(ActionCollection):
         os.makedirs(f"{self.trace_log_dir}/browser_log", exist_ok=True)
 
         self._color_log("Browser automation service initialized", Color.green, "debug")
-        self._color_log(f"Downloads directory: {self.browser_profile.downloads_path}", Color.blue, "debug")
-        self._color_log(f"Trace logs directory: {self.trace_log_dir}/browser_log", Color.blue, "debug")
+        self._color_log(
+            f"Downloads directory: {self.browser_profile.downloads_path}",
+            Color.blue,
+            "debug",
+        )
+        self._color_log(
+            f"Trace logs directory: {self.trace_log_dir}/browser_log",
+            Color.blue,
+            "debug",
+        )
 
     def _create_browser_agent(self, task: str) -> Agent:
         """Create a browser agent instance with configured settings.
@@ -159,10 +167,15 @@ class BrowserCollection(ActionCollection):
 
     async def mcp_browser_use(
         self,
-        task: str = Field(description="The task to perform using the browser automation agent"),
-        max_steps: int = Field(default=50, description="Maximum number of steps for browser execution"),
+        task: str = Field(
+            description="The task to perform using the browser automation agent"
+        ),
+        max_steps: int = Field(
+            default=50, description="Maximum number of steps for browser execution"
+        ),
         extract_format: str = Field(
-            default="markdown", description="Format for extracted content: 'markdown', 'json', or 'text'"
+            default="markdown",
+            description="Format for extracted content: 'markdown', 'json', or 'text'",
         ),
     ) -> ActionResponse:
         """Perform browser automation tasks using the browser-use package.
@@ -194,7 +207,11 @@ class BrowserCollection(ActionCollection):
 
             execution_time = time.time() - start_time
 
-            if browser_execution is not None and browser_execution.is_done() and browser_execution.is_successful():
+            if (
+                browser_execution is not None
+                and browser_execution.is_done()
+                and browser_execution.is_successful()
+            ):
                 # Extract and format content
                 extracted_content = browser_execution.extracted_content()
                 final_result = browser_execution.final_result()
@@ -202,7 +219,8 @@ class BrowserCollection(ActionCollection):
                 # Format content based on requested format
                 if extract_format.lower() == "json":
                     formatted_content = json.dumps(
-                        {"summary": final_result, "extracted_data": extracted_content}, indent=2
+                        {"summary": final_result, "extracted_data": extracted_content},
+                        indent=2,
                     )
                 elif extract_format.lower() == "text":
                     formatted_content = f"{final_result}\n\n{self._format_extracted_content(extracted_content)}"
@@ -216,7 +234,9 @@ class BrowserCollection(ActionCollection):
                 metadata = BrowserMetadata(
                     task=task,
                     execution_successful=True,
-                    steps_taken=len(browser_execution.history) if hasattr(browser_execution, "history") else None,
+                    steps_taken=len(browser_execution.history)
+                    if hasattr(browser_execution, "history")
+                    else None,
                     downloaded_files=[],
                     visited_urls=self._extract_visited_urls(extracted_content),
                     execution_time=execution_time,
@@ -226,7 +246,11 @@ class BrowserCollection(ActionCollection):
                 self._color_log(f"🗒️ Detail: {extracted_content}", Color.lightgrey)
                 self._color_log(f"🌏 Result: {final_result}", Color.green)
 
-                return ActionResponse(success=True, message=formatted_content, metadata=metadata.model_dump())
+                return ActionResponse(
+                    success=True,
+                    message=formatted_content,
+                    metadata=metadata.model_dump(),
+                )
 
             else:
                 # Handle execution failure
@@ -242,7 +266,9 @@ class BrowserCollection(ActionCollection):
 
                 self._color_log(f"❌ {error_msg}", Color.red)
 
-                return ActionResponse(success=False, message=error_msg, metadata=metadata.model_dump())
+                return ActionResponse(
+                    success=False, message=error_msg, metadata=metadata.model_dump()
+                )
 
         except Exception as e:
             error_msg = f"Browser automation failed: {str(e)}"
@@ -260,7 +286,9 @@ class BrowserCollection(ActionCollection):
             self._color_log(f"❌ {error_msg}", Color.red)
 
             return ActionResponse(
-                success=False, message=f"{error_msg}\n\nError details: {error_trace}", metadata=metadata.model_dump()
+                success=False,
+                message=f"{error_msg}\n\nError details: {error_trace}",
+                metadata=metadata.model_dump(),
             )
 
     async def mcp_get_browser_capabilities(self) -> ActionResponse:
@@ -303,7 +331,9 @@ class BrowserCollection(ActionCollection):
         - **Trace Logging:** {capabilities["configuration"]["trace_logging"]}
         """
 
-        return ActionResponse(success=True, message=formatted_info, metadata=capabilities)
+        return ActionResponse(
+            success=True, message=formatted_info, metadata=capabilities
+        )
 
 
 # Example usage and entry point

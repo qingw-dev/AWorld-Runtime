@@ -31,7 +31,9 @@ class CSVCollection(ActionCollection):
         self.supported_extensions: set = {".csv", ".tsv", ".txt"}
 
         self._color_log("CSV Extraction Service initialized", Color.green, "debug")
-        self._color_log(f"Media output directory: {self._media_output_dir}", Color.blue, "debug")
+        self._color_log(
+            f"Media output directory: {self._media_output_dir}", Color.blue, "debug"
+        )
 
     async def _detect_encoding(self, file_path: Path) -> str:
         """Detect file encoding using chardet.
@@ -51,7 +53,10 @@ class CSVCollection(ActionCollection):
                     encoding = result.get("encoding", "utf-8")
                     confidence = result.get("confidence", 0)
 
-                    self._color_log(f"Detected encoding: {encoding} (confidence: {confidence:.2f})", Color.blue)
+                    self._color_log(
+                        f"Detected encoding: {encoding} (confidence: {confidence:.2f})",
+                        Color.blue,
+                    )
                     return encoding if confidence > 0.7 else "utf-8"
             except Exception as e:
                 self.logger.warning(f"Encoding detection failed: {e}, using utf-8")
@@ -86,7 +91,9 @@ class CSVCollection(ActionCollection):
 
                 if delimiter_counts:
                     detected_delimiter = max(delimiter_counts, key=delimiter_counts.get)
-                    self._color_log(f"Detected delimiter: '{detected_delimiter}'", Color.blue)
+                    self._color_log(
+                        f"Detected delimiter: '{detected_delimiter}'", Color.blue
+                    )
                     return detected_delimiter
                 else:
                     return ","
@@ -97,7 +104,11 @@ class CSVCollection(ActionCollection):
         return await asyncio.to_thread(sync_detect)
 
     async def _extract_csv_content(
-        self, file_path: Path, max_rows: int | None = None, encoding: str | None = None, delimiter: str | None = None
+        self,
+        file_path: Path,
+        max_rows: int | None = None,
+        encoding: str | None = None,
+        delimiter: str | None = None,
     ) -> dict[str, Any]:
         """Extract content from CSV file using pandas.
 
@@ -121,7 +132,13 @@ class CSVCollection(ActionCollection):
         def sync_read_csv():
             try:
                 # Read CSV with pandas
-                df = pd.read_csv(file_path, encoding=encoding, delimiter=delimiter, nrows=max_rows, low_memory=False)
+                df = pd.read_csv(
+                    file_path,
+                    encoding=encoding,
+                    delimiter=delimiter,
+                    nrows=max_rows,
+                    low_memory=False,
+                )
 
                 # Get full file info for metadata
                 full_df_info = pd.read_csv(
@@ -132,7 +149,9 @@ class CSVCollection(ActionCollection):
                 )
 
                 # Count total rows efficiently
-                total_rows = sum(1 for _ in open(file_path, encoding=encoding)) - 1  # Subtract header
+                total_rows = (
+                    sum(1 for _ in open(file_path, encoding=encoding)) - 1
+                )  # Subtract header
 
                 processing_time = time.time() - start_time
 
@@ -154,7 +173,9 @@ class CSVCollection(ActionCollection):
 
         return await asyncio.to_thread(sync_read_csv)
 
-    def _format_content_for_llm(self, df: pd.DataFrame, output_format: str, include_stats: bool = True) -> str:
+    def _format_content_for_llm(
+        self, df: pd.DataFrame, output_format: str, include_stats: bool = True
+    ) -> str:
         """Format extracted CSV content to be LLM-friendly.
 
         Args:
@@ -220,17 +241,30 @@ class CSVCollection(ActionCollection):
 
     async def mcp_extract_csv_content(
         self,
-        file_path: str = Field(description="Path to the CSV document file to extract content from"),
+        file_path: str = Field(
+            description="Path to the CSV document file to extract content from"
+        ),
         output_format: Literal["markdown", "json", "html", "text"] = Field(
-            default="markdown", description="Output format: 'markdown', 'json', 'html', or 'text'"
+            default="markdown",
+            description="Output format: 'markdown', 'json', 'html', or 'text'",
         ),
-        max_rows: int | None = Field(default=None, description="Maximum number of rows to read (None for all rows)"),
-        include_statistics: bool = Field(default=True, description="Whether to include statistical summary in output"),
+        max_rows: int | None = Field(
+            default=None,
+            description="Maximum number of rows to read (None for all rows)",
+        ),
+        include_statistics: bool = Field(
+            default=True, description="Whether to include statistical summary in output"
+        ),
         generate_visualizations: bool = Field(
-            default=False, description="Whether to generate and save data visualizations"
+            default=False,
+            description="Whether to generate and save data visualizations",
         ),
-        encoding: str | None = Field(default=None, description="File encoding (auto-detected if None)"),
-        delimiter: str | None = Field(default=None, description="CSV delimiter (auto-detected if None)"),
+        encoding: str | None = Field(
+            default=None, description="File encoding (auto-detected if None)"
+        ),
+        delimiter: str | None = Field(
+            default=None, description="CSV delimiter (auto-detected if None)"
+        ),
     ) -> ActionResponse:
         """Extract content from CSV documents using pandas.
 
@@ -283,7 +317,9 @@ class CSVCollection(ActionCollection):
             df: pd.DataFrame = extraction_result["dataframe"]
 
             # Format content for LLM consumption
-            formatted_content = self._format_content_for_llm(df, output_format, include_stats=include_statistics)
+            formatted_content = self._format_content_for_llm(
+                df, output_format, include_stats=include_statistics
+            )
 
             # Prepare metadata
             file_stats = file_path.stat()
@@ -308,7 +344,9 @@ class CSVCollection(ActionCollection):
                 "rows_processed": len(df),
                 "columns_processed": len(df.columns),
                 "column_names": extraction_result["columns"],
-                "data_types": {k: str(v) for k, v in extraction_result["data_types"].items()},
+                "data_types": {
+                    k: str(v) for k, v in extraction_result["data_types"].items()
+                },
                 "encoding": extraction_result["encoding"],
                 "delimiter": extraction_result["delimiter"],
                 "memory_usage_bytes": int(extraction_result["memory_usage"]),
@@ -323,12 +361,16 @@ class CSVCollection(ActionCollection):
                 Color.green,
             )
 
-            return ActionResponse(success=True, message=formatted_content, metadata=final_metadata)
+            return ActionResponse(
+                success=True, message=formatted_content, metadata=final_metadata
+            )
 
         except FileNotFoundError as e:
             self.logger.error(f"File not found: {str(e)}")
             return ActionResponse(
-                success=False, message=f"File not found: {str(e)}", metadata={"error_type": "file_not_found"}
+                success=False,
+                message=f"File not found: {str(e)}",
+                metadata={"error_type": "file_not_found"},
             )
         except ValueError as e:
             self.logger.error(f"Invalid input: {str(e)}")
@@ -338,7 +380,9 @@ class CSVCollection(ActionCollection):
                 metadata={"error_type": "invalid_input"},
             )
         except Exception as e:
-            self.logger.error(f"CSV extraction failed: {str(e)}: {traceback.format_exc()}")
+            self.logger.error(
+                f"CSV extraction failed: {str(e)}: {traceback.format_exc()}"
+            )
             return ActionResponse(
                 success=False,
                 message=f"CSV extraction failed: {str(e)}",
@@ -358,13 +402,19 @@ class CSVCollection(ActionCollection):
         }
 
         format_list = "\n".join(
-            [f"**{format_name}**: {description}" for format_name, description in supported_formats.items()]
+            [
+                f"**{format_name}**: {description}"
+                for format_name, description in supported_formats.items()
+            ]
         )
 
         return ActionResponse(
             success=True,
             message=f"Supported CSV formats:\n\n{format_list}",
-            metadata={"supported_formats": list(supported_formats.keys()), "total_formats": len(supported_formats)},
+            metadata={
+                "supported_formats": list(supported_formats.keys()),
+                "total_formats": len(supported_formats),
+            },
         )
 
 

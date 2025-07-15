@@ -21,7 +21,9 @@ class OpenRouterService:
         self.base_url = "https://openrouter.ai/api/v1"
         self.timeout = 30
 
-    async def chat_completion(self, request: ChatCompletionRequest, request_id: str) -> tuple[ChatCompletionResponse, bool]:
+    async def chat_completion(
+        self, request: ChatCompletionRequest, request_id: str
+    ) -> tuple[ChatCompletionResponse, bool]:
         """Perform a chat completion request.
 
         Args:
@@ -37,11 +39,16 @@ class OpenRouterService:
             headers = self._build_headers(request)
             payload = self._build_chat_payload(request)
 
-            self.logger.info(f"[{request_id}] Making OpenRouter chat completion request with model: {request.model}")
+            self.logger.info(
+                f"[{request_id}] Making OpenRouter chat completion request with model: {request.model}"
+            )
 
             async with aiohttp.ClientSession() as session:
                 async with session.post(
-                    url=f"{self.base_url}/chat/completions", headers=headers, data=json.dumps(payload), timeout=self.timeout
+                    url=f"{self.base_url}/chat/completions",
+                    headers=headers,
+                    data=json.dumps(payload),
+                    timeout=self.timeout,
                 ) as response:
                     response.raise_for_status()
                     response_data = await response.json()
@@ -55,13 +62,17 @@ class OpenRouterService:
             )
 
             completion_time = time.time() - start_time
-            self.logger.info(f"[{request_id}] Chat completion completed successfully in {completion_time:.3f}s")
+            self.logger.info(
+                f"[{request_id}] Chat completion completed successfully in {completion_time:.3f}s"
+            )
 
             return completion_response, True
 
         except aiohttp.ClientError as e:
             completion_time = time.time() - start_time
-            self.logger.error(f"[{request_id}] OpenRouter API request failed: {e} - Time: {completion_time:.3f}s")
+            self.logger.error(
+                f"[{request_id}] OpenRouter API request failed: {e} - Time: {completion_time:.3f}s"
+            )
             return None, False
 
         except Exception as e:
@@ -86,27 +97,40 @@ class OpenRouterService:
             self.logger.info(f"[{request_id}] Fetching available OpenRouter models")
 
             async with aiohttp.ClientSession() as session:
-                async with session.get(url=f"{self.base_url}/models", timeout=self.timeout) as response:
+                async with session.get(
+                    url=f"{self.base_url}/models", timeout=self.timeout
+                ) as response:
                     response.raise_for_status()
                     models_data = await response.json()
 
             model_count = len(models_data.get("data", []))
 
-            models_response = ModelsResponse(success=True, request_id=request_id, models=models_data, count=model_count)
+            models_response = ModelsResponse(
+                success=True,
+                request_id=request_id,
+                models=models_data,
+                count=model_count,
+            )
 
             fetch_time = time.time() - start_time
-            self.logger.info(f"[{request_id}] Successfully fetched {model_count} models in {fetch_time:.3f}s")
+            self.logger.info(
+                f"[{request_id}] Successfully fetched {model_count} models in {fetch_time:.3f}s"
+            )
 
             return models_response, True
 
         except aiohttp.ClientError as e:
             fetch_time = time.time() - start_time
-            self.logger.error(f"[{request_id}] Failed to fetch models: {e} - Time: {fetch_time:.3f}s")
+            self.logger.error(
+                f"[{request_id}] Failed to fetch models: {e} - Time: {fetch_time:.3f}s"
+            )
             return None, False
 
         except Exception as e:
             fetch_time = time.time() - start_time
-            self.logger.error(f"[{request_id}] Unexpected error fetching models: {e} - Time: {fetch_time:.3f}s")
+            self.logger.error(
+                f"[{request_id}] Unexpected error fetching models: {e} - Time: {fetch_time:.3f}s"
+            )
             return None, False
 
     def _build_headers(self, request: ChatCompletionRequest) -> dict[str, str]:
@@ -131,7 +155,14 @@ class OpenRouterService:
         }
 
         # Add optional parameters if provided
-        optional_fields = ["max_tokens", "temperature", "top_p", "frequency_penalty", "presence_penalty", "stream"]
+        optional_fields = [
+            "max_tokens",
+            "temperature",
+            "top_p",
+            "frequency_penalty",
+            "presence_penalty",
+            "stream",
+        ]
 
         for field in optional_fields:
             value = getattr(request, field)

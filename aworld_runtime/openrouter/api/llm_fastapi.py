@@ -9,6 +9,8 @@ from ...logging_utils import setup_logger
 from ..models.requests import ChatCompletionRequest
 from ..services.openrouter_service import OpenRouterService
 
+# pylint: disable=W0613
+
 openrouter_router = APIRouter(prefix="/openrouter", tags=["openrouter"])
 logger: logging.Logger = setup_logger(__name__)
 
@@ -20,7 +22,9 @@ def get_request_id(request: Request) -> str:
 
 @openrouter_router.post("/completions")
 async def chat_completions(
-    chat_request: ChatCompletionRequest, request: Request, request_id: str = Depends(get_request_id)
+    chat_request: ChatCompletionRequest,
+    request: Request,
+    request_id: str = Depends(get_request_id),
 ):
     """Chat completions endpoint.
 
@@ -64,10 +68,10 @@ async def chat_completions(
 
     except ValidationError as e:
         logger.error(f"[{request_id}] Validation error: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"[{request_id}] Error in chat completions endpoint: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @openrouter_router.get("/models")
@@ -95,11 +99,13 @@ async def list_models(request: Request, request_id: str = Depends(get_request_id
 
         if not success:
             logger.error(f"[{request_id}] Failed to fetch models")
-            raise HTTPException(status_code=502, detail="Failed to fetch models from OpenRouter API")
+            raise HTTPException(
+                status_code=502, detail="Failed to fetch models from OpenRouter API"
+            )
 
         logger.info(f"[{request_id}] Models fetched successfully")
         return response.model_dump()
 
     except Exception as e:
         logger.error(f"[{request_id}] Error in models endpoint: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e

@@ -4,13 +4,12 @@ import traceback
 from pathlib import Path
 from typing import Literal
 
-from aworld.config.conf import AgentConfig
-from aworld.models.llm import call_llm_model, get_llm_model
 from pydantic import BaseModel, Field
 from pydantic.fields import FieldInfo
 
 from ....logging_utils import Color
 from ..action_collection import ActionArguments, ActionCollection, ActionResponse
+from ..utils import ModelResponse, call_openai_text_model
 
 
 class CodeGenerationMetadata(BaseModel):
@@ -44,18 +43,12 @@ class CodeCollection(ActionCollection):
     def __init__(self, arguments: ActionArguments) -> None:
         super().__init__(arguments)
 
-        # Initialize code generation model configuration
-        self._llm_config = AgentConfig(
-            llm_provider="openai",
-            llm_model_name="anthropic/claude-sonnet-4",
-            llm_api_key=os.getenv("LLM_API_KEY", "your_openai_api_key"),
-            llm_base_url=os.getenv("LLM_BASE_URL", "your_openai_base_url"),
-        )
-
         self._color_log("Code Generation Service initialized", Color.green, "debug")
-        self._color_log(f"Using model: {self._llm_config.llm_model_name}", Color.blue, "debug")
+        self._color_log("Using model: anthropic/claude-sonnet-4", Color.blue, "debug")
 
-    def _prepare_code_prompt(self, task_description: str, requirements: str = "", context: str = "") -> str:
+    def _prepare_code_prompt(
+        self, task_description: str, requirements: str = "", context: str = ""
+    ) -> str:
         """Prepare the code generation prompt with task description and optional requirements.
 
         Args:
@@ -76,7 +69,7 @@ class CodeCollection(ActionCollection):
 
         return "\n\n".join(prompt_parts)
 
-    def _call_code_model(self, prompt: str, temperature: float = 0.1) -> str:
+    async def _call_code_model(self, prompt: str, temperature: float = 0.1) -> str:
         """Call the code generation model with the prepared prompt.
 
         Args:
@@ -89,8 +82,7 @@ class CodeCollection(ActionCollection):
         Raises:
             Exception: If model call fails
         """
-        response = call_llm_model(
-            llm_model=get_llm_model(conf=self._llm_config),
+        response: ModelResponse = await call_openai_text_model(
             messages=[
                 {
                     "role": "system",
@@ -103,9 +95,11 @@ class CodeCollection(ActionCollection):
                 },
                 {"role": "user", "content": prompt},
             ],
+            model="anthropic/claude-sonnet-4",
+            base_url=os.getenv("LLM_BASE_URL", "your_openai_base_url"),
+            api_key=os.getenv("LLM_API_KEY", "your_openai_api_key"),
             temperature=temperature,
         )
-
         return response.content
 
     def _extract_python_code(self, response: str) -> str:
@@ -140,11 +134,16 @@ class CodeCollection(ActionCollection):
 
     def mcp_generate_python_code(
         self,
-        task_description: str = Field(description="Description of the programming task or problem to solve"),
-        requirements: str = Field(
-            default="", description="Specific requirements, constraints, or specifications for the code"
+        task_description: str = Field(
+            description="Description of the programming task or problem to solve"
         ),
-        context: str = Field(default="", description="Additional context or background information"),
+        requirements: str = Field(
+            default="",
+            description="Specific requirements, constraints, or specifications for the code",
+        ),
+        context: str = Field(
+            default="", description="Additional context or background information"
+        ),
         temperature: float = Field(
             default=0.1,
             description="Model temperature for code generation (0.0-1.0, lower = more deterministic)",
@@ -212,7 +211,9 @@ class CodeCollection(ActionCollection):
             if not task_description or not task_description.strip():
                 raise ValueError("Task description is required for code generation")
 
-            self._color_log(f"Generating code for: {task_description[:100]}...", Color.cyan)
+            self._color_log(
+                f"Generating code for: {task_description[:100]}...", Color.cyan
+            )
 
             start_time = time.time()
 
@@ -221,7 +222,9 @@ class CodeCollection(ActionCollection):
 
             # Enhance prompt based on code style
             if code_style == "minimal":
-                prompt += "\n\nGenerate concise, minimal code without extensive comments."
+                prompt += (
+                    "\n\nGenerate concise, minimal code without extensive comments."
+                )
             elif code_style == "verbose":
                 prompt += "\n\nGenerate detailed code with comprehensive comments and explanations."
             elif code_style == "documented":
@@ -237,7 +240,7 @@ class CodeCollection(ActionCollection):
 
             # Populate metadata fields
             metadata = CodeGenerationMetadata(
-                model_name=self._llm_config.llm_model_name,
+                model_name="anthropic/claude-sonnet-4",
                 code_style=code_style,
                 code_length=len(generated_code),
                 line_count=len(generated_code.split("\n")),
@@ -252,7 +255,9 @@ class CodeCollection(ActionCollection):
                 try:
                     # Use _validate_file_path to ensure path is within workspace and get absolute path
                     # The check_existence=False allows creating a new file.
-                    output_file_path_obj = Path(self._validate_file_path(save_to_file_path))
+                    output_file_path_obj = Path(
+                        self._validate_file_path(save_to_file_path)
+                    )
 
                     # Ensure parent directories exist
                     output_file_path_obj.parent.mkdir(parents=True, exist_ok=True)
@@ -261,9 +266,14 @@ class CodeCollection(ActionCollection):
                         f.write(generated_code)
 
                     metadata.saved_file_path = str(output_file_path_obj)
-                    self._color_log(f"Generated code also saved to: {output_file_path_obj}", Color.blue)
+                    self._color_log(
+                        f"Generated code also saved to: {output_file_path_obj}",
+                        Color.blue,
+                    )
                 except Exception as e:
-                    self.logger.error(f"Failed to save code to file '{save_to_file_path}': {str(e)}")
+                    self.logger.error(
+                        f"Failed to save code to file '{save_to_file_path}': {str(e)}"
+                    )
                     metadata.file_save_error = str(e)
 
             self._color_log(
@@ -272,7 +282,11 @@ class CodeCollection(ActionCollection):
                 Color.green,
             )
 
-            return ActionResponse(success=True, message=generated_code, metadata=metadata.model_dump(exclude_none=True))
+            return ActionResponse(
+                success=True,
+                message=generated_code,
+                metadata=metadata.model_dump(exclude_none=True),
+            )
 
         except ValueError as e:
             self.logger.error(f"Invalid input: {str(e)}")
@@ -284,7 +298,9 @@ class CodeCollection(ActionCollection):
                 metadata=metadata.model_dump(exclude_none=True),
             )
         except Exception as e:
-            self.logger.error(f"Code generation failed: {str(e)}: {traceback.format_exc()}")
+            self.logger.error(
+                f"Code generation failed: {str(e)}: {traceback.format_exc()}"
+            )
             metadata.error_type = "generation_error"
             metadata.error_message = str(e)
             return ActionResponse(
@@ -309,12 +325,15 @@ class CodeCollection(ActionCollection):
         }
 
         capability_list = "\n".join(
-            [f"**{capability}**: {description}" for capability, description in capabilities.items()]
+            [
+                f"**{capability}**: {description}"
+                for capability, description in capabilities.items()
+            ]
         )
 
         metadata = {
-            "model_name": self._llm_config.llm_model_name,
-            "provider": self._llm_config.llm_provider,
+            "model_name": "anthropic/claude-sonnet-4",
+            "provider": "openrouter",
             "supported_capabilities": list(capabilities.keys()),
             "total_capabilities": len(capabilities),
             "code_styles": ["minimal", "documented", "verbose"],

@@ -7,10 +7,10 @@ from pathlib import Path
 from typing import Any, Literal
 
 import chardet
-from aworld.logs.util import Color
 from pydantic import Field
 from pydantic.fields import FieldInfo
 
+from ....logging_utils import Color
 from ...models.document import DocumentMetadata
 from ..action_collection import ActionArguments, ActionCollection, ActionResponse
 from ..utils import get_mime_type
@@ -77,7 +77,9 @@ class TextCollection(ActionCollection):
         }
 
         self._color_log("Text Extraction Service initialized", Color.green, "debug")
-        self._color_log(f"Media output directory: {self._media_output_dir}", Color.blue, "debug")
+        self._color_log(
+            f"Media output directory: {self._media_output_dir}", Color.blue, "debug"
+        )
 
     async def _validate_file_path(self, file_path: str) -> Path:
         """Validate and resolve file path.
@@ -100,7 +102,9 @@ class TextCollection(ActionCollection):
             raise FileNotFoundError(f"File not found: {path}")
 
         # Also check MIME type for files without extensions or unknown extensions
-        mime_type = await asyncio.to_thread(get_mime_type, str(path), default_mime="text/plain")
+        mime_type = await asyncio.to_thread(
+            get_mime_type, str(path), default_mime="text/plain"
+        )
         is_text_mime = mime_type and mime_type.startswith("text/")
 
         if path.suffix.lower() not in self.supported_extensions and not is_text_mime:
@@ -114,7 +118,10 @@ class TextCollection(ActionCollection):
                 sample = await asyncio.to_thread(read_sample)
                 # Check if the sample contains mostly printable characters
                 if self._is_likely_text(sample):
-                    self._color_log(f"Detected text file without standard extension: {path.suffix}", Color.yellow)
+                    self._color_log(
+                        f"Detected text file without standard extension: {path.suffix}",
+                        Color.yellow,
+                    )
                 else:
                     raise ValueError(
                         f"Unsupported file type: {path.suffix}. "
@@ -152,7 +159,9 @@ class TextCollection(ActionCollection):
             pass
 
         # Check if most bytes are printable ASCII
-        printable_count = sum(1 for byte in data if 32 <= byte <= 126 or byte in [9, 10, 13])
+        printable_count = sum(
+            1 for byte in data if 32 <= byte <= 126 or byte in [9, 10, 13]
+        )
         return printable_count / len(data) > 0.7
 
     async def _detect_encoding(self, file_path: Path) -> dict[str, Any]:
@@ -202,7 +211,9 @@ class TextCollection(ActionCollection):
             else:
                 # Use chardet for encoding detection
                 detection_result = await asyncio.to_thread(chardet.detect, raw_data)
-                encoding_info["detected_encoding"] = detection_result.get("encoding", "utf-8")
+                encoding_info["detected_encoding"] = detection_result.get(
+                    "encoding", "utf-8"
+                )
                 encoding_info["confidence"] = detection_result.get("confidence", 0.0)
 
             # Detect line endings
@@ -225,7 +236,9 @@ class TextCollection(ActionCollection):
 
         return encoding_info
 
-    async def _extract_text_content(self, file_path: Path, encoding: str | None = None) -> dict[str, Any]:
+    async def _extract_text_content(
+        self, file_path: Path, encoding: str | None = None
+    ) -> dict[str, Any]:
         """Extract content from text files.
 
         Args:
@@ -248,7 +261,8 @@ class TextCollection(ActionCollection):
             # Use detected encoding
             target_encoding = encoding_info["detected_encoding"]
             self._color_log(
-                f"Detected encoding: {target_encoding} (confidence: {encoding_info['confidence']:.2f})", Color.blue
+                f"Detected encoding: {target_encoding} (confidence: {encoding_info['confidence']:.2f})",
+                Color.blue,
             )
 
         try:
@@ -268,7 +282,9 @@ class TextCollection(ActionCollection):
             line_lengths = [len(line) for line in lines]
             max_line_length = max(line_lengths) if line_lengths else 0
             min_line_length = min(line_lengths) if line_lengths else 0
-            avg_line_length = sum(line_lengths) / len(line_lengths) if line_lengths else 0
+            avg_line_length = (
+                sum(line_lengths) / len(line_lengths) if line_lengths else 0
+            )
 
             # Count empty lines
             empty_lines = sum(1 for line in lines if not line.strip())
@@ -296,17 +312,24 @@ class TextCollection(ActionCollection):
             }
 
         except UnicodeDecodeError as e:
-            self.logger.error(f"Failed to decode file with encoding {target_encoding}: {str(e)}")
+            self.logger.error(
+                f"Failed to decode file with encoding {target_encoding}: {str(e)}"
+            )
             # Try with fallback encodings
             fallback_encodings = ["utf-8", "latin-1", "cp1252", "iso-8859-1"]
 
             for fallback_encoding in fallback_encodings:
                 if fallback_encoding != target_encoding:
                     try:
-                        with open(file_path, encoding=fallback_encoding, errors="replace") as f:
+                        with open(
+                            file_path, encoding=fallback_encoding, errors="replace"
+                        ) as f:
                             content = f.read()
 
-                        self._color_log(f"Successfully read with fallback encoding: {fallback_encoding}", Color.yellow)
+                        self._color_log(
+                            f"Successfully read with fallback encoding: {fallback_encoding}",
+                            Color.yellow,
+                        )
 
                         # Recalculate with fallback encoding
                         lines = content.splitlines()
@@ -323,14 +346,24 @@ class TextCollection(ActionCollection):
                                 "character_count": char_count,
                                 "line_count": line_count,
                                 "word_count": word_count,
-                                "empty_lines": sum(1 for line in lines if not line.strip()),
-                                "max_line_length": max(len(line) for line in lines) if lines else 0,
-                                "min_line_length": min(len(line) for line in lines) if lines else 0,
-                                "avg_line_length": round(sum(len(line) for line in lines) / len(lines), 2)
+                                "empty_lines": sum(
+                                    1 for line in lines if not line.strip()
+                                ),
+                                "max_line_length": max(len(line) for line in lines)
+                                if lines
+                                else 0,
+                                "min_line_length": min(len(line) for line in lines)
+                                if lines
+                                else 0,
+                                "avg_line_length": round(
+                                    sum(len(line) for line in lines) / len(lines), 2
+                                )
                                 if lines
                                 else 0,
                             },
-                            "content_type": self._detect_content_type(content, file_path),
+                            "content_type": self._detect_content_type(
+                                content, file_path
+                            ),
                             "processing_time": processing_time,
                             "used_encoding": fallback_encoding,
                             "encoding_fallback": True,
@@ -395,7 +428,10 @@ class TextCollection(ActionCollection):
             return "Plain text"
 
     async def _format_content_for_llm(
-        self, extraction_result: dict[str, Any], output_format: str, max_length: int | None = None
+        self,
+        extraction_result: dict[str, Any],
+        output_format: str,
+        max_length: int | None = None,
     ) -> str:
         """Format extracted text content to be LLM-friendly.
 
@@ -422,13 +458,17 @@ class TextCollection(ActionCollection):
             formatted_parts = []
             formatted_parts.append("# Text Document Content\n")
             formatted_parts.append(f"**File Type:** {content_type}\n")
-            formatted_parts.append(f"**Encoding:** {extraction_result['used_encoding']}\n")
+            formatted_parts.append(
+                f"**Encoding:** {extraction_result['used_encoding']}\n"
+            )
             formatted_parts.append("**Statistics:**\n")
             formatted_parts.append(f"- Characters: {stats['character_count']:,}\n")
             formatted_parts.append(f"- Lines: {stats['line_count']:,}\n")
             formatted_parts.append(f"- Words: {stats['word_count']:,}\n")
             formatted_parts.append(f"- Empty lines: {stats['empty_lines']:,}\n")
-            formatted_parts.append(f"- Average line length: {stats['avg_line_length']} characters\n\n")
+            formatted_parts.append(
+                f"- Average line length: {stats['avg_line_length']} characters\n\n"
+            )
 
             formatted_parts.append(f"## Content\n\n```\n{content}\n```")
 
@@ -451,14 +491,18 @@ class TextCollection(ActionCollection):
             html_parts.append("<html><head><meta charset='utf-8'></head><body>")
             html_parts.append("<h1>Text Document Content</h1>")
             html_parts.append(f"<p><strong>File Type:</strong> {content_type}</p>")
-            html_parts.append(f"<p><strong>Encoding:</strong> {extraction_result['used_encoding']}</p>")
+            html_parts.append(
+                f"<p><strong>Encoding:</strong> {extraction_result['used_encoding']}</p>"
+            )
             html_parts.append("<h2>Statistics</h2>")
             html_parts.append("<ul>")
             html_parts.append(f"<li>Characters: {stats['character_count']:,}</li>")
             html_parts.append(f"<li>Lines: {stats['line_count']:,}</li>")
             html_parts.append(f"<li>Words: {stats['word_count']:,}</li>")
             html_parts.append(f"<li>Empty lines: {stats['empty_lines']:,}</li>")
-            html_parts.append(f"<li>Average line length: {stats['avg_line_length']} characters</li>")
+            html_parts.append(
+                f"<li>Average line length: {stats['avg_line_length']} characters</li>"
+            )
             html_parts.append("</ul>")
             html_parts.append("<h2>Content</h2>")
             html_parts.append(f"<pre><code>{content}</code></pre>")
@@ -476,20 +520,29 @@ class TextCollection(ActionCollection):
             text_parts.append(f"  Lines: {stats['line_count']:,}\n")
             text_parts.append(f"  Words: {stats['word_count']:,}\n")
             text_parts.append(f"  Empty lines: {stats['empty_lines']:,}\n")
-            text_parts.append(f"  Average line length: {stats['avg_line_length']} characters\n")
+            text_parts.append(
+                f"  Average line length: {stats['avg_line_length']} characters\n"
+            )
             text_parts.append(f"\nContent:\n{'-' * 30}\n{content}")
 
             return "".join(text_parts)
 
     async def mcp_extract_text_content(
         self,
-        file_path: str = Field(description="Path to the text document file to extract content from"),
-        output_format: Literal["markdown", "json", "html", "text"] = Field(
-            default="markdown", description="Output format: 'markdown', 'json', 'html', or 'text'"
+        file_path: str = Field(
+            description="Path to the text document file to extract content from"
         ),
-        encoding: str | None = Field(default=None, description="Specific encoding to use (None for auto-detection)"),
+        output_format: Literal["markdown", "json", "html", "text"] = Field(
+            default="markdown",
+            description="Output format: 'markdown', 'json', 'html', or 'text'",
+        ),
+        encoding: str | None = Field(
+            default=None,
+            description="Specific encoding to use (None for auto-detection)",
+        ),
         max_content_length: int | None = Field(
-            default=None, description="Maximum length of content to include in output (None for no limit)"
+            default=None,
+            description="Maximum length of content to include in output (None for no limit)",
         ),
     ) -> ActionResponse:
         """Extract content from text documents with encoding detection and analysis.
@@ -530,10 +583,11 @@ class TextCollection(ActionCollection):
             extraction_result = await self._extract_text_content(file_path, encoding)
 
             # Format for LLM
-            formatted_content = await self._format_content_for_llm(extraction_result, output_format, max_content_length)
+            formatted_content = await self._format_content_for_llm(
+                extraction_result, output_format, max_content_length
+            )
 
             # Get file metadata
-            file_stat = await asyncio.to_thread(os.stat, file_path)
             metadata = DocumentMetadata(
                 content_type=extraction_result["content_type"],
                 encoding_info=extraction_result["encoding_info"],
@@ -551,7 +605,10 @@ class TextCollection(ActionCollection):
             return ActionResponse(error=str(e), status="error")
         except Exception as e:
             self.logger.error(f"An unexpected error occurred: {e}", exc_info=True)
-            return ActionResponse(error=f"An unexpected error occurred: {e}\n{traceback.format_exc()}", status="error")
+            return ActionResponse(
+                error=f"An unexpected error occurred: {e}\n{traceback.format_exc()}",
+                status="error",
+            )
 
     async def mcp_list_supported_formats(self) -> ActionResponse:
         """List all supported text document file formats and extensions.
@@ -561,7 +618,7 @@ class TextCollection(ActionCollection):
         """
         return ActionResponse(
             content={
-                "supported_extensions": sorted(list(self.supported_extensions)),
+                "supported_extensions": sorted(self.supported_extensions),
                 "description": "These extensions are generally supported for text content extraction.",
             },
             status="success",
