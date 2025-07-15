@@ -20,14 +20,11 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from aworld.config.conf import AgentConfig
-from aworld.models.llm import call_llm_model, get_llm_model
-from aworld.models.model_response import ModelResponse
 from pydantic import BaseModel, Field
 
 from ....logging_utils import Color
 from ..action_collection import ActionArguments, ActionCollection, ActionResponse
-from ..utils import get_file_from_source
+from ..utils import ModelResponse, call_openai_vision_model, get_file_from_source
 
 
 class VideoAnalysisResult(BaseModel):
@@ -142,9 +139,7 @@ class VideoCollection(ActionCollection):
             # Get file with validation (only video files allowed)
             file_path, _, _ = get_file_from_source(
                 video_source,
-                allowed_mime_prefixes=None,
                 max_size_mb=2500.0,  # 2500MB limit for videos
-                file_type="video",  # Specify type as video
             )
 
             # Open video file
@@ -351,7 +346,7 @@ class VideoCollection(ActionCollection):
 
             return "\n".join(output_parts)
 
-    def _analyze_frame_chunk(self, chunk_data: tuple[int, list, str]) -> tuple[int, str]:
+    async def _analyze_frame_chunk(self, chunk_data: tuple[int, list, str]) -> tuple[int, str]:
         """Analyze a chunk of video frames using LLM.
 
         Args:
@@ -364,18 +359,13 @@ class VideoCollection(ActionCollection):
 
         try:
             content = self._create_video_content(self.video_analyze_prompt.format(task=question), frames)
-            inputs = [{"role": "user", "content": content}]
+            messages = [{"role": "user", "content": content}]
 
-            response: ModelResponse = call_llm_model(
-                get_llm_model(
-                    conf=AgentConfig(
-                        llm_provider="openai",
-                        llm_model_name=os.getenv("LLM_MODEL_NAME", "gpt-4o"),
-                        llm_api_key=os.getenv("LLM_API_KEY", "your_openai_api_key"),
-                        llm_base_url=os.getenv("LLM_BASE_URL", "your_openai_base_url"),
-                    )
-                ),
-                inputs,
+            response: ModelResponse = await call_openai_vision_model(
+                messages=messages,
+                model=os.getenv("VIDEO_LLM_MODEL_NAME", "gpt-4o"),
+                base_url=os.getenv("VIDEO_LLM_BASE_URL", "your_openai_base_url"),
+                api_key=os.getenv("VIDEO_LLM_API_KEY", "your_openai_api_key"),
                 temperature=float(os.getenv("LLM_TEMPERATURE", "1.0")),
             )
             analysis_result = response.content
@@ -571,19 +561,14 @@ class VideoCollection(ActionCollection):
             for i in range(0, len(video_frames), interval):
                 cur_frames = video_frames[i : i + frame_nums]
                 content = self._create_video_content(self.video_summarize_prompt, cur_frames)
-                inputs = [{"role": "user", "content": content}]
+                messages = [{"role": "user", "content": content}]
 
                 try:
-                    response: ModelResponse = call_llm_model(
-                        get_llm_model(
-                            conf=AgentConfig(
-                                llm_provider="openai",
-                                llm_model_name=os.getenv("LLM_MODEL_NAME", "gpt-4o"),
-                                llm_api_key=os.getenv("LLM_API_KEY", "your_openai_api_key"),
-                                llm_base_url=os.getenv("LLM_BASE_URL", "your_openai_base_url"),
-                            )
-                        ),
-                        inputs,
+                    response: ModelResponse = await call_openai_vision_model(
+                        messages=messages,
+                        model=os.getenv("IMAGE_LLM_MODEL_NAME", "gpt-4o"),
+                        base_url=os.getenv("IMAGE_LLM_BASE_URL", "your_openai_base_url"),
+                        api_key=os.getenv("IMAGE_LLM_API_KEY", "your_openai_api_key"),
                         temperature=float(os.getenv("LLM_TEMPERATURE", "1.0")),
                     )
                     cur_summary = response.content

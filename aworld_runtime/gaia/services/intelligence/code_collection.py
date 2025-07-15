@@ -4,13 +4,12 @@ import traceback
 from pathlib import Path
 from typing import Literal
 
-from aworld.config.conf import AgentConfig
-from aworld.models.llm import call_llm_model, get_llm_model
 from pydantic import BaseModel, Field
 from pydantic.fields import FieldInfo
 
 from ....logging_utils import Color
 from ..action_collection import ActionArguments, ActionCollection, ActionResponse
+from ..utils import ModelResponse, call_openai_text_model
 
 
 class CodeGenerationMetadata(BaseModel):
@@ -44,16 +43,8 @@ class CodeCollection(ActionCollection):
     def __init__(self, arguments: ActionArguments) -> None:
         super().__init__(arguments)
 
-        # Initialize code generation model configuration
-        self._llm_config = AgentConfig(
-            llm_provider="openai",
-            llm_model_name="anthropic/claude-sonnet-4",
-            llm_api_key=os.getenv("LLM_API_KEY", "your_openai_api_key"),
-            llm_base_url=os.getenv("LLM_BASE_URL", "your_openai_base_url"),
-        )
-
         self._color_log("Code Generation Service initialized", Color.green, "debug")
-        self._color_log(f"Using model: {self._llm_config.llm_model_name}", Color.blue, "debug")
+        self._color_log("Using model: anthropic/claude-sonnet-4", Color.blue, "debug")
 
     def _prepare_code_prompt(self, task_description: str, requirements: str = "", context: str = "") -> str:
         """Prepare the code generation prompt with task description and optional requirements.
@@ -76,7 +67,7 @@ class CodeCollection(ActionCollection):
 
         return "\n\n".join(prompt_parts)
 
-    def _call_code_model(self, prompt: str, temperature: float = 0.1) -> str:
+    async def _call_code_model(self, prompt: str, temperature: float = 0.1) -> str:
         """Call the code generation model with the prepared prompt.
 
         Args:
@@ -89,8 +80,7 @@ class CodeCollection(ActionCollection):
         Raises:
             Exception: If model call fails
         """
-        response = call_llm_model(
-            llm_model=get_llm_model(conf=self._llm_config),
+        response: ModelResponse = await call_openai_text_model(
             messages=[
                 {
                     "role": "system",
@@ -103,9 +93,11 @@ class CodeCollection(ActionCollection):
                 },
                 {"role": "user", "content": prompt},
             ],
+            model="anthropic/claude-sonnet-4",
+            base_url=os.getenv("LLM_BASE_URL", "your_openai_base_url"),
+            api_key=os.getenv("LLM_API_KEY", "your_openai_api_key"),
             temperature=temperature,
         )
-
         return response.content
 
     def _extract_python_code(self, response: str) -> str:
@@ -237,7 +229,7 @@ class CodeCollection(ActionCollection):
 
             # Populate metadata fields
             metadata = CodeGenerationMetadata(
-                model_name=self._llm_config.llm_model_name,
+                model_name="anthropic/claude-sonnet-4",
                 code_style=code_style,
                 code_length=len(generated_code),
                 line_count=len(generated_code.split("\n")),
@@ -313,8 +305,8 @@ class CodeCollection(ActionCollection):
         )
 
         metadata = {
-            "model_name": self._llm_config.llm_model_name,
-            "provider": self._llm_config.llm_provider,
+            "model_name": "anthropic/claude-sonnet-4",
+            "provider": "openrouter",
             "supported_capabilities": list(capabilities.keys()),
             "total_capabilities": len(capabilities),
             "code_styles": ["minimal", "documented", "verbose"],

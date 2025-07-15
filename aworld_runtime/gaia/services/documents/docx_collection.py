@@ -195,7 +195,7 @@ class DOCXExtractionCollection(ActionCollection):
             process = await asyncio.create_subprocess_exec(
                 *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
-            stdout, stderr = await process.communicate()
+            _, stderr = await process.communicate()
 
             if process.returncode != 0:
                 self.logger.error(f"LibreOffice conversion failed: {stderr.decode()}")

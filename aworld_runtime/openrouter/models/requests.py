@@ -5,6 +5,7 @@ from typing import Any
 from pydantic import BaseModel, Field, field_validator
 
 
+# pylint:disable=E0213
 class BaseOpenRouterRequest(BaseModel):
     """Base OpenRouter request with common fields."""
 

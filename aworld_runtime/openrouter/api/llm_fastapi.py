@@ -9,6 +9,8 @@ from ...logging_utils import setup_logger
 from ..models.requests import ChatCompletionRequest
 from ..services.openrouter_service import OpenRouterService
 
+# pylint: disable=W0613
+
 openrouter_router = APIRouter(prefix="/openrouter", tags=["openrouter"])
 logger: logging.Logger = setup_logger(__name__)
 

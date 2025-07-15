@@ -8,15 +8,13 @@ from pathlib import Path
 from typing import Any
 
 import pytesseract
-from aworld.config.conf import AgentConfig
-from aworld.models.llm import call_llm_model, get_llm_model
-from aworld.models.model_response import ModelResponse
 from PIL import Image, ImageEnhance, ImageFilter
 from pydantic import BaseModel, Field
 from pydantic.fields import FieldInfo
 
 from ....logging_utils import Color
 from ..action_collection import ActionArguments, ActionCollection, ActionResponse
+from ..utils import ModelResponse, call_openai_vision_model
 
 
 class ImageMetadata(BaseModel):
@@ -67,12 +65,12 @@ class ImageCollection(ActionCollection):
             ".svg",
         }
 
-        self._llm_config = AgentConfig(
-            llm_provider="openai",
-            llm_model_name=os.getenv("IMAGE_LLM_MODEL_NAME", "gpt-4o"),
-            llm_api_key=os.getenv("IMAGE_LLM_API_KEY", "your_openai_api_key"),
-            llm_base_url=os.getenv("IMAGE_LLM_BASE_URL", "your_openai_base_url"),
-        )
+        # self._llm_config = AgentConfig(
+        #     llm_provider="openai",
+        #     llm_model_name=os.getenv("IMAGE_LLM_MODEL_NAME", "gpt-4o"),
+        #     llm_api_key=os.getenv("IMAGE_LLM_API_KEY", "your_openai_api_key"),
+        #     llm_base_url=os.getenv("IMAGE_LLM_BASE_URL", "your_openai_base_url"),
+        # )
 
         self._color_log("Image Processing Service initialized", Color.green, "debug")
         self._color_log(f"Image output directory: {self._image_output_dir}", Color.blue, "debug")
@@ -163,10 +161,11 @@ class ImageCollection(ActionCollection):
                     ],
                 },
             ]
-            response: ModelResponse = await asyncio.to_thread(
-                call_llm_model,
-                llm_model=get_llm_model(conf=self._llm_config),
+            response: ModelResponse = await call_openai_vision_model(
                 messages=messages,
+                model=os.getenv("IMAGE_LLM_MODEL_NAME", "gpt-4o"),
+                base_url=os.getenv("IMAGE_LLM_BASE_URL", "your_openai_base_url"),
+                api_key=os.getenv("IMAGE_LLM_API_KEY", "your_openai_api_key"),
                 temperature=float(os.getenv("LLM_TEMPERATURE", "1.0")),
             )
             self._color_log(f"{response.content=}", Color.green)
