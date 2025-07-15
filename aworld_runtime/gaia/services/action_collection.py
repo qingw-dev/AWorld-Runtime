@@ -3,11 +3,10 @@ import os
 from pathlib import Path
 from typing import Any, Literal
 
-from aworld.logs.util import Color
 from mcp.server import FastMCP
 from pydantic import BaseModel, Field
 
-from ...logging_utils import color_log, setup_logger
+from ...logging_utils import Color, color_log, setup_logger
 
 
 class ActionArguments(BaseModel):
@@ -61,7 +60,8 @@ class ActionCollection:
         if self.transport == "stdio":
             self.server.run(transport="stdio")
         elif self.transport == "sse":
-            self.server.run(transport="sse", port=self.port)
+            self.server.settings.port = self.port
+            self.server.run(transport="sse")
 
     def _color_log(self, value: str, color: Color | None = None, level: str = "info") -> None:
         color_log(self.logger, value, color, level=level)
