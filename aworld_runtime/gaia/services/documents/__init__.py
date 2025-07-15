@@ -14,15 +14,17 @@ The `DocumentMetadata` model is a shared Pydantic model used for storing common 
 from ...models.document import DocumentMetadata
 from .csv_collection import CSVCollection
 from .docx_collection import DOCXExtractionCollection
-from .pdf_collection import PDFDocumentCollection
 from .pptx_collection import PPTXCollection
 from .txt_collection import TextCollection
 from .xlsx_collection import XLSXCollection
 
+# banned due to dependecy conflicts
+# from .pdf_collection import PDFDocumentCollection
+
 __all__ = [
     "CSVCollection",
     "DOCXExtractionCollection",
-    "PDFDocumentCollection",
+    # "PDFDocumentCollection",
     "PPTXCollection",
     "TextCollection",
     "XLSXCollection",
