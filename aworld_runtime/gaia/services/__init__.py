@@ -5,7 +5,7 @@ from .documents import (
     CSVCollection,
     DocumentMetadata,
     DOCXExtractionCollection,
-    PDFDocumentCollection,
+    # PDFDocumentCollection,
     PPTXCollection,
     TextCollection,
     XLSXCollection,
@@ -57,7 +57,7 @@ __all__ = [
     # Documents
     "CSVCollection",
     "DOCXExtractionCollection",
-    "PDFDocumentCollection",
+    # "PDFDocumentCollection",
     "PPTXCollection",
     "TextCollection",
     "XLSXCollection",
