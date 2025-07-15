@@ -40,13 +40,17 @@ class PDFDocumentCollection(ActionCollection):
         self._marker_models = None
         self._media_output_dir = self.workspace / "extracted_media"
         self._media_output_dir.mkdir(exist_ok=True)
-        self._extracted_texts_dir = self.workspace / "extracted_texts"  # New directory for text files
+        self._extracted_texts_dir = (
+            self.workspace / "extracted_texts"
+        )  # New directory for text files
         self._extracted_texts_dir.mkdir(exist_ok=True)
 
         self.supported_extensions = {".pdf"}
 
         self._color_log("PDF Extraction Service initialized", Color.green, "debug")
-        self._color_log(f"Media output directory: {self._media_output_dir}", Color.blue, "debug")
+        self._color_log(
+            f"Media output directory: {self._media_output_dir}", Color.blue, "debug"
+        )
 
     async def _load_marker_models(self) -> None:
         """Load marker models for document processing.
@@ -103,7 +107,9 @@ class PDFDocumentCollection(ActionCollection):
             converter: PdfConverter = PdfConverter(artifact_dict=self._marker_models)
             rendered = converter(str(file_path))
             text, _, images = text_from_rendered(rendered)
-            text = text.encode(settings.OUTPUT_ENCODING, errors="replace").decode(settings.OUTPUT_ENCODING)
+            text = text.encode(settings.OUTPUT_ENCODING, errors="replace").decode(
+                settings.OUTPUT_ENCODING
+            )
             return text, images
 
         text, images = await asyncio.to_thread(blocking_extraction)
@@ -116,7 +122,9 @@ class PDFDocumentCollection(ActionCollection):
             "processing_time": processing_time,
         }
 
-    async def _save_extracted_media(self, images: dict[str, Any], file_stem: str) -> list[dict[str, str]]:
+    async def _save_extracted_media(
+        self, images: dict[str, Any], file_stem: str
+    ) -> list[dict[str, str]]:
         """Save extracted images and return their paths.
 
         Args:
@@ -148,17 +156,26 @@ class PDFDocumentCollection(ActionCollection):
                     await asyncio.to_thread(write_bytes, image_path, image_data)
                 else:
                     # Handle other formats
-                    self.logger.warning(f"Unknown image data type for page {page_num}: {type(image_data)}")
+                    self.logger.warning(
+                        f"Unknown image data type for page {page_num}: {type(image_data)}"
+                    )
                     continue
 
                 saved_media.append(
-                    {"type": "image", "path": str(image_path), "page": str(page_num), "filename": image_filename}
+                    {
+                        "type": "image",
+                        "path": str(image_path),
+                        "page": str(page_num),
+                        "filename": image_filename,
+                    }
                 )
 
                 self._color_log(f"Saved image: {image_filename}", Color.blue)
 
             except Exception as e:
-                self.logger.error(f"Failed to save image from page {page_num}: {str(e)}")
+                self.logger.error(
+                    f"Failed to save image from page {page_num}: {str(e)}"
+                )
 
         return saved_media
 
@@ -178,32 +195,50 @@ class PDFDocumentCollection(ActionCollection):
         elif output_format.lower() == "json":
             # Structure content as JSON
 
-            return json.dumps({"content": content, "format": "structured_text"}, indent=2)
+            return json.dumps(
+                {"content": content, "format": "structured_text"}, indent=2
+            )
         elif output_format.lower() == "html":
             # Convert markdown to HTML if needed
             try:
                 return await asyncio.to_thread(markdown.markdown, content)
             except ImportError:
-                self.logger.warning("markdown package not available, returning raw content")
+                self.logger.warning(
+                    "markdown package not available, returning raw content"
+                )
                 return content
         else:
             return content
 
     async def mcp_extract_document_content(
         self,
-        file_path: str = Field(description="Path to the PDF document file to extract content from"),
-        output_format: Literal["markdown", "json", "html"] = Field(
-            default="markdown", description="Output format: 'markdown', 'json', or 'html'"
+        file_path: str = Field(
+            description="Path to the PDF document file to extract content from"
         ),
-        extract_images: bool = Field(default=True, description="Whether to extract and save images from the document"),
+        output_format: Literal["markdown", "json", "html"] = Field(
+            default="markdown",
+            description="Output format: 'markdown', 'json', or 'html'",
+        ),
+        extract_images: bool = Field(
+            default=True,
+            description="Whether to extract and save images from the document",
+        ),
         save_extracted_text_to_file: bool = Field(
             default=False, description="Save extracted text to a local file"
         ),  # New parameter
-        use_llm: bool = Field(default=False, description="Use LLM for enhanced accuracy (requires additional setup)"),
-        page_range: str | None = Field(default=None, description="Specific pages to process (e.g., '0,5-10,20')"),
-        force_ocr: bool = Field(default=False, description="Force OCR processing on the entire document"),
+        use_llm: bool = Field(
+            default=False,
+            description="Use LLM for enhanced accuracy (requires additional setup)",
+        ),
+        page_range: str | None = Field(
+            default=None, description="Specific pages to process (e.g., '0,5-10,20')"
+        ),
+        force_ocr: bool = Field(
+            default=False, description="Force OCR processing on the entire document"
+        ),
         format_lines: bool = Field(
-            default=False, description="Reformat lines using local OCR model for better quality"
+            default=False,
+            description="Reformat lines using local OCR model for better quality",
         ),
     ) -> ActionResponse:
         """Extract content from PDF documents using marker package.
@@ -228,7 +263,9 @@ class PDFDocumentCollection(ActionCollection):
                 output_format = output_format.default
             if isinstance(extract_images, FieldInfo):
                 extract_images = extract_images.default
-            if isinstance(save_extracted_text_to_file, FieldInfo):  # Handle new parameter
+            if isinstance(
+                save_extracted_text_to_file, FieldInfo
+            ):  # Handle new parameter
                 save_extracted_text_to_file = save_extracted_text_to_file.default
             if isinstance(page_range, FieldInfo):
                 page_range = page_range.default
@@ -247,15 +284,21 @@ class PDFDocumentCollection(ActionCollection):
             await self._load_marker_models()
 
             # Extract content using marker
-            extraction_result = await self._extract_content_with_marker(file_path, page_range, force_ocr)
+            extraction_result = await self._extract_content_with_marker(
+                file_path, page_range, force_ocr
+            )
 
             # Save extracted media if requested
             saved_media = []
             if extract_images and extraction_result["images"]:
-                saved_media = await self._save_extracted_media(extraction_result["images"], file_path.stem)
+                saved_media = await self._save_extracted_media(
+                    extraction_result["images"], file_path.stem
+                )
 
             # Format content for LLM consumption
-            formatted_content = await self._format_content_for_llm(extraction_result["content"], output_format)
+            formatted_content = await self._format_content_for_llm(
+                extraction_result["content"], output_format
+            )
 
             # Save extracted text to file if requested
             saved_text_path_str: str | None = None
@@ -268,11 +311,17 @@ class PDFDocumentCollection(ActionCollection):
                         with open(path, "w", encoding="utf-8") as f:
                             f.write(data)
 
-                    await asyncio.to_thread(write_text, saved_text_path, formatted_content)
+                    await asyncio.to_thread(
+                        write_text, saved_text_path, formatted_content
+                    )
                     saved_text_path_str = str(saved_text_path.absolute())
-                    self._color_log(f"Saved extracted text to: {saved_text_path_str}", Color.blue)
+                    self._color_log(
+                        f"Saved extracted text to: {saved_text_path_str}", Color.blue
+                    )
                 except Exception as e:
-                    self.logger.error(f"Failed to save extracted text to {saved_text_path}: {str(e)}")
+                    self.logger.error(
+                        f"Failed to save extracted text to {saved_text_path}: {str(e)}"
+                    )
                     # Optionally, you might want to reflect this failure in the response
 
             # Prepare metadata
@@ -284,7 +333,9 @@ class PDFDocumentCollection(ActionCollection):
                 absolute_path=str(file_path.absolute()),
                 page_count=extraction_result["metadata"].get("page_count"),
                 processing_time=extraction_result["processing_time"],
-                extracted_images=[media["path"] for media in saved_media if media["type"] == "image"],
+                extracted_images=[
+                    media["path"] for media in saved_media if media["type"] == "image"
+                ],
                 extracted_media=saved_media,
                 output_format=output_format,
                 llm_enhanced=use_llm,
@@ -298,12 +349,18 @@ class PDFDocumentCollection(ActionCollection):
                 Color.green,
             )
 
-            return ActionResponse(success=True, message=formatted_content, metadata=document_metadata.model_dump())
+            return ActionResponse(
+                success=True,
+                message=formatted_content,
+                metadata=document_metadata.model_dump(),
+            )
 
         except FileNotFoundError as e:
             self.logger.error(f"File not found: {str(e)}: {traceback.format_exc()}")
             return ActionResponse(
-                success=False, message=f"File not found: {str(e)}", metadata={"error_type": "file_not_found"}
+                success=False,
+                message=f"File not found: {str(e)}",
+                metadata={"error_type": "file_not_found"},
             )
         except ValueError as e:
             self.logger.error(f"Invalid input: {str(e)}: {traceback.format_exc()}")
@@ -313,7 +370,9 @@ class PDFDocumentCollection(ActionCollection):
                 metadata={"error_type": "invalid_input"},
             )
         except Exception as e:
-            self.logger.error(f"Document extraction failed: {str(e)}: {traceback.format_exc()}")
+            self.logger.error(
+                f"Document extraction failed: {str(e)}: {traceback.format_exc()}"
+            )
             return ActionResponse(
                 success=False,
                 message=f"Document extraction failed: {str(e)}",
@@ -331,13 +390,19 @@ class PDFDocumentCollection(ActionCollection):
         }
 
         format_list = "\n".join(
-            [f"**{format_name}**: {description}" for format_name, description in supported_formats.items()]
+            [
+                f"**{format_name}**: {description}"
+                for format_name, description in supported_formats.items()
+            ]
         )
 
         return ActionResponse(
             success=True,
             message=f"Supported document formats:\n\n{format_list}",
-            metadata={"supported_formats": list(supported_formats.keys()), "total_formats": len(supported_formats)},
+            metadata={
+                "supported_formats": list(supported_formats.keys()),
+                "total_formats": len(supported_formats),
+            },
         )
 
 

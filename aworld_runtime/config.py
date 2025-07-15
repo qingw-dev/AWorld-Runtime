@@ -12,7 +12,6 @@ class Settings(BaseSettings):
     model_config = ConfigDict(
         env_file=".env",
         env_prefix="SEARCH_",
-
     )
 
     # Server settings
@@ -23,7 +22,9 @@ class Settings(BaseSettings):
     # Search settings
     num_results: int = Field(default=5, description="Default number of search results")
     max_workers: int = Field(default=10, description="Maximum concurrent workers")
-    max_content_workers: int = Field(default=5, description="Maximum content fetch workers")
+    max_content_workers: int = Field(
+        default=5, description="Maximum content fetch workers"
+    )
     request_timeout: int = Field(default=15, description="Request timeout in seconds")
 
     # Logging settings
@@ -31,7 +32,9 @@ class Settings(BaseSettings):
     log_file: str = Field(default="search_server.log", description="Log file path")
 
     # Optional API keys (can be provided per request)
-    google_api_key: str | None = Field(default=None, description="Default Google API key")
+    google_api_key: str | None = Field(
+        default=None, description="Default Google API key"
+    )
     google_cse_id: str | None = Field(default=None, description="Default Google CSE ID")
 
 

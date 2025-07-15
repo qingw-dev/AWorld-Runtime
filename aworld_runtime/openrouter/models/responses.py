@@ -11,7 +11,9 @@ class BaseResponse(BaseModel):
 
     success: bool = Field(..., description="Whether the request was successful")
     request_id: str = Field(..., description="Unique request identifier")
-    timestamp: datetime = Field(default_factory=datetime.now, description="Response timestamp")
+    timestamp: datetime = Field(
+        default_factory=datetime.now, description="Response timestamp"
+    )
 
 
 class ErrorResponse(BaseResponse):
@@ -27,7 +29,9 @@ class ChatCompletionResponse(BaseResponse):
 
     response: dict[str, Any] = Field(..., description="OpenRouter API response")
     model: str = Field(..., description="Model used for completion")
-    usage: dict[str, Any] | None = Field(default=None, description="Token usage information")
+    usage: dict[str, Any] | None = Field(
+        default=None, description="Token usage information"
+    )
 
 
 class ModelsResponse(BaseResponse):

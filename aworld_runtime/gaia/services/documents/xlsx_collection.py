@@ -42,8 +42,12 @@ class XLSXCollection(ActionCollection):
         }
 
         self._color_log("Excel Extraction Service initialized", Color.green, "debug")
-        self._color_log(f"Media output directory: {self._media_output_dir}", Color.blue, "debug")
-        self._color_log(f"Screenshots directory: {self._screenshots_dir}", Color.blue, "debug")
+        self._color_log(
+            f"Media output directory: {self._media_output_dir}", Color.blue, "debug"
+        )
+        self._color_log(
+            f"Screenshots directory: {self._screenshots_dir}", Color.blue, "debug"
+        )
 
     async def _validate_file_path(self, file_path: str) -> Path:
         """Validate and resolve file path.
@@ -72,7 +76,9 @@ class XLSXCollection(ActionCollection):
 
         return path
 
-    async def _extract_embedded_media_xlsx(self, file_path: Path) -> list[dict[str, str]]:
+    async def _extract_embedded_media_xlsx(
+        self, file_path: Path
+    ) -> list[dict[str, str]]:
         """Extract embedded media from XLSX files.
 
         Args:
@@ -97,7 +103,9 @@ class XLSXCollection(ActionCollection):
                         for idx, image in enumerate(worksheet._images):
                             try:
                                 # Generate unique filename
-                                image_filename = f"{file_path.stem}_{sheet_name}_img_{idx}.png"
+                                image_filename = (
+                                    f"{file_path.stem}_{sheet_name}_img_{idx}.png"
+                                )
                                 image_path = self._media_output_dir / image_filename
 
                                 # Save image
@@ -117,13 +125,19 @@ class XLSXCollection(ActionCollection):
                                             }
                                         )
 
-                                        self._color_log(f"Saved image: {image_filename}", Color.blue)
+                                        self._color_log(
+                                            f"Saved image: {image_filename}", Color.blue
+                                        )
                             except Exception as e:
-                                self.logger.warning(f"Failed to extract image {idx} from sheet {sheet_name}: {str(e)}")
+                                self.logger.warning(
+                                    f"Failed to extract image {idx} from sheet {sheet_name}: {str(e)}"
+                                )
 
                 # Also try to extract from ZIP structure for additional media
                 with zipfile.ZipFile(file_path, "r") as zip_file:
-                    media_files = [f for f in zip_file.namelist() if f.startswith("xl/media/")]
+                    media_files = [
+                        f for f in zip_file.namelist() if f.startswith("xl/media/")
+                    ]
 
                     for media_file in media_files:
                         try:
@@ -154,9 +168,13 @@ class XLSXCollection(ActionCollection):
                                 }
                             )
 
-                            self._color_log(f"Saved media: {media_filename}", Color.blue)
+                            self._color_log(
+                                f"Saved media: {media_filename}", Color.blue
+                            )
                         except Exception as e:
-                            self.logger.warning(f"Failed to extract media {media_file}: {str(e)}")
+                            self.logger.warning(
+                                f"Failed to extract media {media_file}: {str(e)}"
+                            )
 
             except Exception as e:
                 self.logger.warning(f"Failed to extract media from XLSX: {str(e)}")
@@ -165,7 +183,9 @@ class XLSXCollection(ActionCollection):
 
         return await asyncio.to_thread(extract_media)
 
-    async def _extract_excel_content(self, file_path: Path, sheet_names: list[str] | None = None) -> dict[str, Any]:
+    async def _extract_excel_content(
+        self, file_path: Path, sheet_names: list[str] | None = None
+    ) -> dict[str, Any]:
         """Extract content from Excel files using pandas and xlrd.
 
         Args:
@@ -203,7 +223,9 @@ class XLSXCollection(ActionCollection):
                     if sheet_name in excel_file.sheet_names:
                         try:
                             # Read sheet data
-                            df = pd.read_excel(excel_file, sheet_name=sheet_name, header=None)
+                            df = pd.read_excel(
+                                excel_file, sheet_name=sheet_name, header=None
+                            )
 
                             # Remove completely empty rows and columns
                             df = df.dropna(how="all").dropna(axis=1, how="all")
@@ -227,7 +249,9 @@ class XLSXCollection(ActionCollection):
                                 }
 
                         except Exception as e:
-                            self.logger.warning(f"Failed to read sheet '{sheet_name}': {str(e)}")
+                            self.logger.warning(
+                                f"Failed to read sheet '{sheet_name}': {str(e)}"
+                            )
                             sheets_data[sheet_name] = {
                                 "error": str(e),
                                 "shape": (0, 0),
@@ -244,7 +268,9 @@ class XLSXCollection(ActionCollection):
                     "total_rows": total_rows,
                     "total_columns": total_cols,
                     "processing_time": processing_time,
-                    "file_engine": "openpyxl" if file_path.suffix.lower() == ".xlsx" else "xlrd",
+                    "file_engine": "openpyxl"
+                    if file_path.suffix.lower() == ".xlsx"
+                    else "xlrd",
                 }
 
             except Exception as e:
@@ -254,7 +280,10 @@ class XLSXCollection(ActionCollection):
         return await asyncio.to_thread(extract)
 
     async def _format_content_for_llm(
-        self, extraction_result: dict[str, Any], output_format: str, include_empty_cells: bool = False
+        self,
+        extraction_result: dict[str, Any],
+        output_format: str,
+        include_empty_cells: bool = False,
     ) -> str:
         """Format extracted Excel content to be LLM-friendly.
 
@@ -273,8 +302,12 @@ class XLSXCollection(ActionCollection):
             if output_format.lower() == "markdown":
                 content_parts = []
                 content_parts.append("# Excel Document Content\n")
-                content_parts.append(f"**Total Sheets:** {extraction_result['total_sheets']}\n")
-                content_parts.append(f"**Processing Engine:** {extraction_result['file_engine']}\n\n")
+                content_parts.append(
+                    f"**Total Sheets:** {extraction_result['total_sheets']}\n"
+                )
+                content_parts.append(
+                    f"**Processing Engine:** {extraction_result['file_engine']}\n\n"
+                )
 
                 for sheet_name, sheet_info in sheets_data.items():
                     content_parts.append(f"## Sheet: {sheet_name}\n")
@@ -286,8 +319,12 @@ class XLSXCollection(ActionCollection):
                     df: pd.DataFrame = sheet_info["data"]
                     shape = sheet_info["shape"]
 
-                    content_parts.append(f"**Dimensions:** {shape[0]} rows × {shape[1]} columns\n")
-                    content_parts.append(f"**Non-empty cells:** {sheet_info['non_empty_cells']}\n\n")
+                    content_parts.append(
+                        f"**Dimensions:** {shape[0]} rows × {shape[1]} columns\n"
+                    )
+                    content_parts.append(
+                        f"**Non-empty cells:** {sheet_info['non_empty_cells']}\n\n"
+                    )
 
                     if not df.empty:
                         # Convert DataFrame to markdown table
@@ -300,11 +337,15 @@ class XLSXCollection(ActionCollection):
 
                         # Convert to markdown table
                         try:
-                            markdown_table = df_display.to_markdown(index=False, tablefmt="pipe")
+                            markdown_table = df_display.to_markdown(
+                                index=False, tablefmt="pipe"
+                            )
                             content_parts.append(f"### Data:\n{markdown_table}\n\n")
                         except Exception:
                             # Fallback to string representation
-                            content_parts.append(f"### Data (text format):\n```\n{df_display.to_string()}\n```\n\n")
+                            content_parts.append(
+                                f"### Data (text format):\n```\n{df_display.to_string()}\n```\n\n"
+                            )
                     else:
                         content_parts.append("*Sheet is empty*\n\n")
 
@@ -323,7 +364,10 @@ class XLSXCollection(ActionCollection):
 
                 for sheet_name, sheet_info in sheets_data.items():
                     if "error" in sheet_info:
-                        json_data["sheets"][sheet_name] = {"error": sheet_info["error"], "shape": sheet_info["shape"]}
+                        json_data["sheets"][sheet_name] = {
+                            "error": sheet_info["error"],
+                            "shape": sheet_info["shape"],
+                        }
                         continue
 
                     df = sheet_info["data"]
@@ -353,21 +397,31 @@ class XLSXCollection(ActionCollection):
                 html_parts = []
                 html_parts.append("<html><body>")
                 html_parts.append("<h1>Excel Document Content</h1>")
-                html_parts.append(f"<p><strong>Total Sheets:</strong> {extraction_result['total_sheets']}</p>")
-                html_parts.append(f"<p><strong>Processing Engine:</strong> {extraction_result['file_engine']}</p>")
+                html_parts.append(
+                    f"<p><strong>Total Sheets:</strong> {extraction_result['total_sheets']}</p>"
+                )
+                html_parts.append(
+                    f"<p><strong>Processing Engine:</strong> {extraction_result['file_engine']}</p>"
+                )
 
                 for sheet_name, sheet_info in sheets_data.items():
                     html_parts.append(f"<h2>Sheet: {sheet_name}</h2>")
 
                     if "error" in sheet_info:
-                        html_parts.append(f"<p><strong>Error:</strong> {sheet_info['error']}</p>")
+                        html_parts.append(
+                            f"<p><strong>Error:</strong> {sheet_info['error']}</p>"
+                        )
                         continue
 
                     df = sheet_info["data"]
                     shape = sheet_info["shape"]
 
-                    html_parts.append(f"<p><strong>Dimensions:</strong> {shape[0]} rows × {shape[1]} columns</p>")
-                    html_parts.append(f"<p><strong>Non-empty cells:</strong> {sheet_info['non_empty_cells']}</p>")
+                    html_parts.append(
+                        f"<p><strong>Dimensions:</strong> {shape[0]} rows × {shape[1]} columns</p>"
+                    )
+                    html_parts.append(
+                        f"<p><strong>Non-empty cells:</strong> {sheet_info['non_empty_cells']}</p>"
+                    )
 
                     if not df.empty:
                         # Convert DataFrame to HTML table
@@ -376,7 +430,9 @@ class XLSXCollection(ActionCollection):
                         else:
                             df_display = df
 
-                        html_table = df_display.to_html(index=False, escape=False, table_id=f"sheet_{sheet_name}")
+                        html_table = df_display.to_html(
+                            index=False, escape=False, table_id=f"sheet_{sheet_name}"
+                        )
                         html_parts.append(html_table)
                     else:
                         html_parts.append("<p><em>Sheet is empty</em></p>")
@@ -387,8 +443,12 @@ class XLSXCollection(ActionCollection):
             else:  # text format
                 content_parts = []
                 content_parts.append(f"Excel Document Content\n{'=' * 50}\n")
-                content_parts.append(f"Total Sheets: {extraction_result['total_sheets']}\n")
-                content_parts.append(f"Processing Engine: {extraction_result['file_engine']}\n\n")
+                content_parts.append(
+                    f"Total Sheets: {extraction_result['total_sheets']}\n"
+                )
+                content_parts.append(
+                    f"Processing Engine: {extraction_result['file_engine']}\n\n"
+                )
 
                 for sheet_name, sheet_info in sheets_data.items():
                     content_parts.append(f"Sheet: {sheet_name}\n{'-' * 30}\n")
@@ -400,8 +460,12 @@ class XLSXCollection(ActionCollection):
                     df = sheet_info["data"]
                     shape = sheet_info["shape"]
 
-                    content_parts.append(f"Dimensions: {shape[0]} rows × {shape[1]} columns\n")
-                    content_parts.append(f"Non-empty cells: {sheet_info['non_empty_cells']}\n\n")
+                    content_parts.append(
+                        f"Dimensions: {shape[0]} rows × {shape[1]} columns\n"
+                    )
+                    content_parts.append(
+                        f"Non-empty cells: {sheet_info['non_empty_cells']}\n\n"
+                    )
 
                     if not df.empty:
                         if include_empty_cells:
@@ -419,15 +483,24 @@ class XLSXCollection(ActionCollection):
 
     async def mcp_extract_excel_content(
         self,
-        file_path: str = Field(description="Path to the Excel document file to extract content from"),
+        file_path: str = Field(
+            description="Path to the Excel document file to extract content from"
+        ),
         output_format: Literal["markdown", "json", "html", "text"] = Field(
-            default="markdown", description="Output format: 'markdown', 'json', 'html', or 'text'"
+            default="markdown",
+            description="Output format: 'markdown', 'json', 'html', or 'text'",
         ),
-        extract_images: bool = Field(default=True, description="Whether to extract and save images from the document"),
+        extract_images: bool = Field(
+            default=True,
+            description="Whether to extract and save images from the document",
+        ),
         sheet_names: str | None = Field(
-            default=None, description="Comma-separated list of specific sheet names to process (None for all sheets)"
+            default=None,
+            description="Comma-separated list of specific sheet names to process (None for all sheets)",
         ),
-        include_empty_cells: bool = Field(default=False, description="Whether to include empty cells in the output"),
+        include_empty_cells: bool = Field(
+            default=False, description="Whether to include empty cells in the output"
+        ),
     ) -> ActionResponse:
         """Extract content from Excel documents using pandas and xlrd.
 
@@ -465,13 +538,17 @@ class XLSXCollection(ActionCollection):
 
             # Validate input file
             validated_file_path: Path = await self._validate_file_path(file_path)
-            self._color_log(f"Processing Excel document: {validated_file_path}", Color.blue)
+            self._color_log(
+                f"Processing Excel document: {validated_file_path}", Color.blue
+            )
 
             # Parse sheet names
             sheet_list = sheet_names.split(",") if sheet_names else None
 
             # Extract content
-            extraction_result = await self._extract_excel_content(validated_file_path, sheet_list)
+            extraction_result = await self._extract_excel_content(
+                validated_file_path, sheet_list
+            )
 
             # Format for LLM
             formatted_content = await self._format_content_for_llm(
@@ -481,7 +558,9 @@ class XLSXCollection(ActionCollection):
             # Extract images
             media_files = []
             if extract_images and validated_file_path.suffix.lower() == ".xlsx":
-                media_files = await self._extract_embedded_media_xlsx(validated_file_path)
+                media_files = await self._extract_embedded_media_xlsx(
+                    validated_file_path
+                )
 
             # Get file metadata
             file_stat = await asyncio.to_thread(os.stat, validated_file_path)
@@ -492,7 +571,9 @@ class XLSXCollection(ActionCollection):
                 created_at=file_stat.st_ctime,
                 modified_at=file_stat.st_mtime,
                 file_type="Excel Document",
-                mime_type=await asyncio.to_thread(get_mime_type, str(validated_file_path)),
+                mime_type=await asyncio.to_thread(
+                    get_mime_type, str(validated_file_path)
+                ),
                 total_sheets=extraction_result["total_sheets"],
                 sheet_names=extraction_result["sheet_names"],
                 total_rows=extraction_result["total_rows"],
@@ -512,7 +593,10 @@ class XLSXCollection(ActionCollection):
             return ActionResponse(error=str(e), status="error")
         except Exception as e:
             self.logger.error(f"An unexpected error occurred: {e}", exc_info=True)
-            return ActionResponse(error=f"An unexpected error occurred: {e}\n{traceback.format_exc()}", status="error")
+            return ActionResponse(
+                error=f"An unexpected error occurred: {e}\n{traceback.format_exc()}",
+                status="error",
+            )
 
     async def mcp_list_supported_formats(self) -> ActionResponse:
         """List all supported Excel formats for extraction.
@@ -526,13 +610,19 @@ class XLSXCollection(ActionCollection):
         }
 
         format_list = "\n".join(
-            [f"**{format_name}**: {description}" for format_name, description in supported_formats.items()]
+            [
+                f"**{format_name}**: {description}"
+                for format_name, description in supported_formats.items()
+            ]
         )
 
         return ActionResponse(
             success=True,
             message=f"Supported Excel formats:\n\n{format_list}",
-            metadata={"supported_formats": list(supported_formats.keys()), "total_formats": len(supported_formats)},
+            metadata={
+                "supported_formats": list(supported_formats.keys()),
+                "total_formats": len(supported_formats),
+            },
         )
 
 

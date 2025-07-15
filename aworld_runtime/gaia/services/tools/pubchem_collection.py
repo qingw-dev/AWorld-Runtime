@@ -122,7 +122,9 @@ class PubChemCollection(ActionCollection):
         self.last_request_time = current_time
         return 0.0
 
-    async def _make_request(self, url: str, params: dict = None) -> tuple[dict | None, float]:
+    async def _make_request(
+        self, url: str, params: dict = None
+    ) -> tuple[dict | None, float]:
         """Make a rate-limited request to PubChem API.
 
         Args:
@@ -144,9 +146,13 @@ class PubChemCollection(ActionCollection):
             if response.status_code == 200:
                 return response.json(), response_time
             elif response.status_code == 503:
-                raise httpx.RequestError("PubChem service temporarily unavailable (503)")
+                raise httpx.RequestError(
+                    "PubChem service temporarily unavailable (503)"
+                )
             else:
-                raise httpx.RequestError(f"HTTP {response.status_code}: {response.text}")
+                raise httpx.RequestError(
+                    f"HTTP {response.status_code}: {response.text}"
+                )
 
         except httpx.TimeoutException as e:
             response_time = time.time() - start_time
@@ -157,12 +163,19 @@ class PubChemCollection(ActionCollection):
 
     async def mcp_search_compounds(
         self,
-        query: str = Field(description="Search query (compound name, CID, SMILES, InChI, etc.)"),
+        query: str = Field(
+            description="Search query (compound name, CID, SMILES, InChI, etc.)"
+        ),
         search_type: Literal["name", "cid", "smiles", "inchi", "formula"] = Field(
             default="name",
             description="Type of search: name (compound name), cid (PubChem ID), smiles, inchi, or formula",
         ),
-        max_results: int = Field(default=10, description="Maximum number of results to return (1-100)", ge=1, le=100),
+        max_results: int = Field(
+            default=10,
+            description="Maximum number of results to return (1-100)",
+            ge=1,
+            le=100,
+        ),
     ) -> ActionResponse:
         """Search for chemical compounds in PubChem database.
 
@@ -193,7 +206,9 @@ class PubChemCollection(ActionCollection):
             if not query or not query.strip():
                 raise ValueError("Search query is required")
 
-            self._color_log(f"Searching PubChem for: {query} (type: {search_type})", Color.cyan)
+            self._color_log(
+                f"Searching PubChem for: {query} (type: {search_type})", Color.cyan
+            )
 
             # Build API URL based on search type
             if search_type == "cid":
@@ -214,8 +229,14 @@ class PubChemCollection(ActionCollection):
 
             # Parse results
             compounds = []
-            if data and "PropertyTable" in data and "Properties" in data["PropertyTable"]:
-                properties_list: list[dict] = data["PropertyTable"]["Properties"][:max_results]
+            if (
+                data
+                and "PropertyTable" in data
+                and "Properties" in data["PropertyTable"]
+            ):
+                properties_list: list[dict] = data["PropertyTable"]["Properties"][
+                    :max_results
+                ]
 
                 for prop in properties_list:
                     compound = CompoundData(
@@ -230,12 +251,18 @@ class PubChemCollection(ActionCollection):
 
             # Format results for LLM
             if compounds:
-                result_lines = [f"Found {len(compounds)} compound(s) for query '{query}':\n"]
+                result_lines = [
+                    f"Found {len(compounds)} compound(s) for query '{query}':\n"
+                ]
 
                 for i, compound in enumerate(compounds, 1):
-                    result_lines.append(f"{i}. **{compound.name}** (CID: {compound.cid})")
+                    result_lines.append(
+                        f"{i}. **{compound.name}** (CID: {compound.cid})"
+                    )
                     result_lines.append(f"   - Formula: {compound.molecular_formula}")
-                    result_lines.append(f"   - Molecular Weight: {compound.molecular_weight} g/mol")
+                    result_lines.append(
+                        f"   - Molecular Weight: {compound.molecular_weight} g/mol"
+                    )
                     result_lines.append(f"   - SMILES: {compound.smiles}")
                     if compound.inchi:
                         result_lines.append(
@@ -259,9 +286,13 @@ class PubChemCollection(ActionCollection):
                 timestamp=datetime.now().isoformat(),
             )
 
-            self._color_log(f"Found {len(compounds)} compounds ({response_time:.2f}s)", Color.green)
+            self._color_log(
+                f"Found {len(compounds)} compounds ({response_time:.2f}s)", Color.green
+            )
 
-            return ActionResponse(success=True, message=message, metadata=metadata.model_dump())
+            return ActionResponse(
+                success=True, message=message, metadata=metadata.model_dump()
+            )
 
         except ValueError as e:
             self.logger.error(f"Invalid input: {str(e)}")
@@ -288,7 +319,12 @@ class PubChemCollection(ActionCollection):
     async def mcp_get_compound_synonyms(
         self,
         cid: int = Field(description="PubChem Compound ID (CID)"),
-        max_synonyms: int = Field(default=20, description="Maximum number of synonyms to return (1-100)", ge=1, le=100),
+        max_synonyms: int = Field(
+            default=20,
+            description="Maximum number of synonyms to return (1-100)",
+            ge=1,
+            le=100,
+        ),
     ) -> ActionResponse:
         """Retrieve synonyms and alternative names for a PubChem compound.
 
@@ -319,7 +355,11 @@ class PubChemCollection(ActionCollection):
 
             # Parse synonyms
             synonyms = []
-            if data and "InformationList" in data and "Information" in data["InformationList"]:
+            if (
+                data
+                and "InformationList" in data
+                and "Information" in data["InformationList"]
+            ):
                 info_list = data["InformationList"]["Information"]
                 if info_list and "Synonym" in info_list[0]:
                     synonyms = info_list[0]["Synonym"][:max_synonyms]
@@ -345,9 +385,14 @@ class PubChemCollection(ActionCollection):
                 timestamp=datetime.now().isoformat(),
             )
 
-            self._color_log(f"Retrieved {len(synonyms)} synonyms ({response_time:.2f}s)", Color.green)
+            self._color_log(
+                f"Retrieved {len(synonyms)} synonyms ({response_time:.2f}s)",
+                Color.green,
+            )
 
-            return ActionResponse(success=True, message=message, metadata=metadata.model_dump())
+            return ActionResponse(
+                success=True, message=message, metadata=metadata.model_dump()
+            )
 
         except ValueError as e:
             self.logger.error(f"Invalid input: {str(e)}")
@@ -364,7 +409,9 @@ class PubChemCollection(ActionCollection):
                 metadata={"error_type": "api_error", "error_message": str(e)},
             )
         except Exception as e:
-            self.logger.error(f"Synonym retrieval failed: {str(e)}: {traceback.format_exc()}")
+            self.logger.error(
+                f"Synonym retrieval failed: {str(e)}: {traceback.format_exc()}"
+            )
             return ActionResponse(
                 success=False,
                 message=f"Synonym retrieval failed: {str(e)}",
@@ -431,7 +478,11 @@ class PubChemCollection(ActionCollection):
 
             # Parse properties
             compound_props = {}
-            if data and "PropertyTable" in data and "Properties" in data["PropertyTable"]:
+            if (
+                data
+                and "PropertyTable" in data
+                and "Properties" in data["PropertyTable"]
+            ):
                 props_data = data["PropertyTable"]["Properties"][0]
                 compound_props = {k: v for k, v in props_data.items() if k != "CID"}
 
@@ -440,7 +491,11 @@ class PubChemCollection(ActionCollection):
                 result_lines = [f"Properties for PubChem CID {cid}:\n"]
 
                 for prop_name, prop_value in compound_props.items():
-                    if prop_name == "InChI" and isinstance(prop_value, str) and len(prop_value) > 100:
+                    if (
+                        prop_name == "InChI"
+                        and isinstance(prop_value, str)
+                        and len(prop_value) > 100
+                    ):
                         result_lines.append(f"**{prop_name}**: {prop_value[:100]}...")
                     else:
                         result_lines.append(f"**{prop_name}**: {prop_value}")
@@ -459,9 +514,14 @@ class PubChemCollection(ActionCollection):
                 timestamp=datetime.now().isoformat(),
             )
 
-            self._color_log(f"Retrieved {len(compound_props)} properties ({response_time:.2f}s)", Color.green)
+            self._color_log(
+                f"Retrieved {len(compound_props)} properties ({response_time:.2f}s)",
+                Color.green,
+            )
 
-            return ActionResponse(success=True, message=message, metadata=metadata.model_dump())
+            return ActionResponse(
+                success=True, message=message, metadata=metadata.model_dump()
+            )
 
         except ValueError as e:
             self.logger.error(f"Invalid input: {str(e)}")
@@ -478,7 +538,9 @@ class PubChemCollection(ActionCollection):
                 metadata={"error_type": "api_error", "error_message": str(e)},
             )
         except Exception as e:
-            self.logger.error(f"Property retrieval failed: {str(e)}: {traceback.format_exc()}")
+            self.logger.error(
+                f"Property retrieval failed: {str(e)}: {traceback.format_exc()}"
+            )
             return ActionResponse(
                 success=False,
                 message=f"Property retrieval failed: {str(e)}",
@@ -487,12 +549,20 @@ class PubChemCollection(ActionCollection):
 
     async def mcp_search_similar_compounds(
         self,
-        cid: int = Field(description="PubChem Compound ID to find similar compounds for"),
+        cid: int = Field(
+            description="PubChem Compound ID to find similar compounds for"
+        ),
         similarity_threshold: float = Field(
-            default=0.9, description="Similarity threshold (0.0-1.0, higher = more similar)", ge=0.0, le=1.0
+            default=0.9,
+            description="Similarity threshold (0.0-1.0, higher = more similar)",
+            ge=0.0,
+            le=1.0,
         ),
         max_results: int = Field(
-            default=10, description="Maximum number of similar compounds to return (1-50)", ge=1, le=50
+            default=10,
+            description="Maximum number of similar compounds to return (1-50)",
+            ge=1,
+            le=50,
         ),
     ) -> ActionResponse:
         """Find structurally similar compounds using PubChem's similarity search.
@@ -519,7 +589,9 @@ class PubChemCollection(ActionCollection):
             if not cid or cid <= 0:
                 raise ValueError("Valid PubChem CID is required")
 
-            self._color_log(f"Searching for compounds similar to CID: {cid}", Color.cyan)
+            self._color_log(
+                f"Searching for compounds similar to CID: {cid}", Color.cyan
+            )
 
             # Build API URL for similarity search
             threshold_percent = int(similarity_threshold * 100)
@@ -531,7 +603,11 @@ class PubChemCollection(ActionCollection):
 
             # Parse similar compounds
             similar_compounds: list[CompoundData] = []
-            if data and "PropertyTable" in data and "Properties" in data["PropertyTable"]:
+            if (
+                data
+                and "PropertyTable" in data
+                and "Properties" in data["PropertyTable"]
+            ):
                 properties_list = data["PropertyTable"]["Properties"]
 
                 for prop in properties_list:
@@ -551,9 +627,13 @@ class PubChemCollection(ActionCollection):
                 ]
 
                 for i, compound in enumerate(similar_compounds, 1):
-                    result_lines.append(f"{i}. **{compound.name}** (CID: {compound.cid})")
+                    result_lines.append(
+                        f"{i}. **{compound.name}** (CID: {compound.cid})"
+                    )
                     result_lines.append(f"   - Formula: {compound.molecular_formula}")
-                    result_lines.append(f"   - Molecular Weight: {compound.molecular_weight} g/mol")
+                    result_lines.append(
+                        f"   - Molecular Weight: {compound.molecular_weight} g/mol"
+                    )
                     result_lines.append("")
 
                 message = "\n".join(result_lines)
@@ -570,9 +650,14 @@ class PubChemCollection(ActionCollection):
                 timestamp=datetime.now().isoformat(),
             )
 
-            self._color_log(f"Found {len(similar_compounds)} similar compounds ({response_time:.2f}s)", Color.green)
+            self._color_log(
+                f"Found {len(similar_compounds)} similar compounds ({response_time:.2f}s)",
+                Color.green,
+            )
 
-            return ActionResponse(success=True, message=message, metadata=metadata.model_dump())
+            return ActionResponse(
+                success=True, message=message, metadata=metadata.model_dump()
+            )
 
         except ValueError as e:
             self.logger.error(f"Invalid input: {str(e)}")
@@ -589,7 +674,9 @@ class PubChemCollection(ActionCollection):
                 metadata={"error_type": "api_error", "error_message": str(e)},
             )
         except Exception as e:
-            self.logger.error(f"Similarity search failed: {str(e)}: {traceback.format_exc()}")
+            self.logger.error(
+                f"Similarity search failed: {str(e)}: {traceback.format_exc()}"
+            )
             return ActionResponse(
                 success=False,
                 message=f"Similarity search failed: {str(e)}",
@@ -612,7 +699,10 @@ class PubChemCollection(ActionCollection):
         }
 
         capability_list = "\n".join(
-            [f"**{capability}**: {description}" for capability, description in capabilities.items()]
+            [
+                f"**{capability}**: {description}"
+                for capability, description in capabilities.items()
+            ]
         )
 
         metadata = {
@@ -626,7 +716,9 @@ class PubChemCollection(ActionCollection):
         }
 
         return ActionResponse(
-            success=True, message=f"PubChem MCP Service Capabilities:\n\n{capability_list}", metadata=metadata
+            success=True,
+            message=f"PubChem MCP Service Capabilities:\n\n{capability_list}",
+            metadata=metadata,
         )
 
 

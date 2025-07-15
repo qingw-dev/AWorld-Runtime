@@ -25,8 +25,12 @@ class ThinkCollection(ActionCollection):
     def __init__(self, arguments: ActionArguments) -> None:
         super().__init__(arguments)
 
-        self._color_log("Intelligence Reasoning Service initialized", Color.green, "debug")
-        self._color_log("Using model: deepseek/deepseek-r1-0528:fre", Color.blue, "debug")
+        self._color_log(
+            "Intelligence Reasoning Service initialized", Color.green, "debug"
+        )
+        self._color_log(
+            "Using model: deepseek/deepseek-r1-0528:fre", Color.blue, "debug"
+        )
 
     def _prepare_reasoning_prompt(self, question: str, original_task: str = "") -> str:
         """Prepare the reasoning prompt with question and optional context.
@@ -79,7 +83,9 @@ class ThinkCollection(ActionCollection):
         question: str = Field(
             description="The input question for complex problem reasoning, such as math and code contest problems"
         ),
-        original_task: str = Field(default="", description="The original task description."),
+        original_task: str = Field(
+            default="", description="The original task description."
+        ),
         temperature: float = Field(
             default=0.3,
             description="Model temperature for response variability (0.0-1.0)",
@@ -126,7 +132,9 @@ class ThinkCollection(ActionCollection):
             if not question or not question.strip():
                 raise ValueError("Question is required for complex problem reasoning")
 
-            self._color_log(f"Processing reasoning request: {question[:100]}...", Color.cyan)
+            self._color_log(
+                f"Processing reasoning request: {question[:100]}...", Color.cyan
+            )
 
             start_time = time.time()
 
@@ -139,7 +147,9 @@ class ThinkCollection(ActionCollection):
             elif reasoning_style == "concise":
                 prompt += "\n\nPlease provide a concise but complete reasoning and final answer."
             elif reasoning_style == "detailed":
-                prompt += "\n\nPlease provide detailed analysis with comprehensive reasoning."
+                prompt += (
+                    "\n\nPlease provide detailed analysis with comprehensive reasoning."
+                )
 
             # Call the reasoning model
             reasoning_result = self._call_reasoning_model(prompt, temperature)
@@ -158,7 +168,9 @@ class ThinkCollection(ActionCollection):
                 Color.green,
             )
 
-            return ActionResponse(success=True, message=reasoning_result, metadata=metadata)
+            return ActionResponse(
+                success=True, message=reasoning_result, metadata=metadata
+            )
 
         except ValueError as e:
             self.logger.error(f"Invalid input: {str(e)}")
@@ -190,7 +202,10 @@ class ThinkCollection(ActionCollection):
         }
 
         capability_list = "\n".join(
-            [f"**{capability}**: {description}" for capability, description in capabilities.items()]
+            [
+                f"**{capability}**: {description}"
+                for capability, description in capabilities.items()
+            ]
         )
 
         metadata = {

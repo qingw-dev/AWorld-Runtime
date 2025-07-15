@@ -81,9 +81,14 @@ class SearchCollection(ActionCollection):
         if self.google_api_key and self.google_cse_id:
             self._color_log("Google Search API credentials found", Color.blue, "debug")
         else:
-            self._color_log("Google Search API credentials missing - some features may be unavailable", Color.yellow)
+            self._color_log(
+                "Google Search API credentials missing - some features may be unavailable",
+                Color.yellow,
+            )
 
-    def _format_search_results_for_llm(self, results: list[SearchResult], query: str) -> str:
+    def _format_search_results_for_llm(
+        self, results: list[SearchResult], query: str
+    ) -> str:
         """Format search results to be LLM-friendly.
 
         Args:
@@ -96,7 +101,10 @@ class SearchCollection(ActionCollection):
         if not results:
             return f"No search results found for query: '{query}'"
 
-        formatted_parts = [f"# Search Results for: '{query}'", f"Found {len(results)} results:\n"]
+        formatted_parts = [
+            f"# Search Results for: '{query}'",
+            f"Found {len(results)} results:\n",
+        ]
 
         for i, result in enumerate(results, 1):
             result_section = [
@@ -115,7 +123,9 @@ class SearchCollection(ActionCollection):
 
         return "\n".join(formatted_parts)
 
-    def _validate_search_parameters(self, query: str, num_results: int) -> tuple[str, int]:
+    def _validate_search_parameters(
+        self, query: str, num_results: int
+    ) -> tuple[str, int]:
         """Validate and normalize search parameters.
 
         Args:
@@ -142,11 +152,25 @@ class SearchCollection(ActionCollection):
     async def mcp_search_google(
         self,
         query: str = Field(description="The search query string to search for"),
-        num_results: int = Field(default=5, description="Number of search results to return (1-10, default: 5)"),
-        safe_search: bool = Field(default=True, description="Whether to enable safe search filtering"),
-        language: str = Field(default="en", description="Language code for search results (e.g., 'en', 'es', 'fr')"),
-        country: str = Field(default="us", description="Country code for search results (e.g., 'us', 'uk', 'ca')"),
-        output_format: str = Field(default="markdown", description="Output format: 'markdown', 'json', or 'text'"),
+        num_results: int = Field(
+            default=5,
+            description="Number of search results to return (1-10, default: 5)",
+        ),
+        safe_search: bool = Field(
+            default=True, description="Whether to enable safe search filtering"
+        ),
+        language: str = Field(
+            default="en",
+            description="Language code for search results (e.g., 'en', 'es', 'fr')",
+        ),
+        country: str = Field(
+            default="us",
+            description="Country code for search results (e.g., 'us', 'uk', 'ca')",
+        ),
+        output_format: str = Field(
+            default="markdown",
+            description="Output format: 'markdown', 'json', or 'text'",
+        ),
     ) -> ActionResponse:
         """Search the web using Google Custom Search API.
 
@@ -194,7 +218,9 @@ class SearchCollection(ActionCollection):
                 )
 
             # Validate parameters
-            validated_query, validated_num_results = self._validate_search_parameters(query, num_results)
+            validated_query, validated_num_results = self._validate_search_parameters(
+                query, num_results
+            )
 
             self._color_log(f"🔍 Searching Google for: '{validated_query}'", Color.cyan)
 
@@ -256,7 +282,9 @@ class SearchCollection(ActionCollection):
                 else:
                     message_content = f"No results found for: {validated_query}"
             else:  # markdown (default)
-                message_content = self._format_search_results_for_llm(search_results, validated_query)
+                message_content = self._format_search_results_for_llm(
+                    search_results, validated_query
+                )
 
             # Prepare metadata
             metadata = SearchMetadata(
@@ -270,32 +298,47 @@ class SearchCollection(ActionCollection):
                 api_quota_used=True,
             )
 
-            self._color_log(f"✅ Found {len(search_results)} results in {search_time:.2f}s", Color.green)
+            self._color_log(
+                f"✅ Found {len(search_results)} results in {search_time:.2f}s",
+                Color.green,
+            )
 
-            return ActionResponse(success=True, message=message_content, metadata=metadata.model_dump())
+            return ActionResponse(
+                success=True, message=message_content, metadata=metadata.model_dump()
+            )
 
         except httpx.RequestError as e:
             error_msg = f"Google Search API request failed: {str(e)}"
             self.logger.error(f"Search API error: {traceback.format_exc()}")
 
             metadata = SearchMetadata(
-                query=query, search_engine="google", total_results=0, error_type="api_request_failed"
+                query=query,
+                search_engine="google",
+                total_results=0,
+                error_type="api_request_failed",
             )
 
             self._color_log(f"❌ {error_msg}", Color.red)
 
-            return ActionResponse(success=False, message=error_msg, metadata=metadata.model_dump())
+            return ActionResponse(
+                success=False, message=error_msg, metadata=metadata.model_dump()
+            )
 
         except ValueError as e:
             error_msg = f"Invalid search parameters: {str(e)}"
 
             metadata = SearchMetadata(
-                query=query, search_engine="google", total_results=0, error_type="invalid_parameters"
+                query=query,
+                search_engine="google",
+                total_results=0,
+                error_type="invalid_parameters",
             )
 
             self._color_log(f"❌ {error_msg}", Color.red)
 
-            return ActionResponse(success=False, message=error_msg, metadata=metadata.model_dump())
+            return ActionResponse(
+                success=False, message=error_msg, metadata=metadata.model_dump()
+            )
 
         except Exception as e:
             error_msg = f"Search operation failed: {str(e)}"
@@ -304,13 +347,18 @@ class SearchCollection(ActionCollection):
             self.logger.error(f"Unexpected search error: {error_trace}")
 
             metadata = SearchMetadata(
-                query=query, search_engine="google", total_results=0, error_type="unexpected_error"
+                query=query,
+                search_engine="google",
+                total_results=0,
+                error_type="unexpected_error",
             )
 
             self._color_log(f"❌ {error_msg}", Color.red)
 
             return ActionResponse(
-                success=False, message=f"{error_msg}\n\nError details: {error_trace}", metadata=metadata.model_dump()
+                success=False,
+                message=f"{error_msg}\n\nError details: {error_trace}",
+                metadata=metadata.model_dump(),
             )
 
     async def mcp_get_search_capabilities(self) -> ActionResponse:
@@ -331,7 +379,9 @@ class SearchCollection(ActionCollection):
             ],
             "supported_formats": ["markdown", "json", "text"],
             "configuration": {
-                "google_api_configured": bool(self.google_api_key and self.google_cse_id),
+                "google_api_configured": bool(
+                    self.google_api_key and self.google_cse_id
+                ),
                 "max_results_per_query": 10,
                 "default_language": "en",
                 "default_country": "us",
@@ -366,7 +416,9 @@ class SearchCollection(ActionCollection):
         {chr(10).join(f"- {limitation}" for limitation in capabilities["limitations"])}
         """
 
-        return ActionResponse(success=True, message=formatted_info, metadata=capabilities)
+        return ActionResponse(
+            success=True, message=formatted_info, metadata=capabilities
+        )
 
 
 # Example usage and entry point

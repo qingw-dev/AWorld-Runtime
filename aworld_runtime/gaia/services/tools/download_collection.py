@@ -100,7 +100,10 @@ class DownloadCollection(ActionCollection):
                 return False, "URL must include a scheme (http:// or https://)"
 
             if parsed.scheme.lower() not in self.supported_schemes:
-                return False, f"Unsupported URL scheme: {parsed.scheme}. Supported: {', '.join(self.supported_schemes)}"
+                return (
+                    False,
+                    f"Unsupported URL scheme: {parsed.scheme}. Supported: {', '.join(self.supported_schemes)}",
+                )
 
             if not parsed.netloc:
                 return False, "URL must include a valid domain"
@@ -126,7 +129,10 @@ class DownloadCollection(ActionCollection):
             resolved_path = (self.workspace / output_path).resolve()
 
             # Security check: ensure the final path is within the workspace
-            if self.workspace.resolve() not in resolved_path.parents and resolved_path != self.workspace.resolve():
+            if (
+                self.workspace.resolve() not in resolved_path.parents
+                and resolved_path != self.workspace.resolve()
+            ):
                 self.logger.error(
                     f"Path traversal attempt blocked: '{output_path}' resolved to '{resolved_path}' which is outside the workspace."
                 )
@@ -139,7 +145,9 @@ class DownloadCollection(ActionCollection):
             self.logger.error(f"Error resolving output path '{output_path}': {e}")
             return None
 
-    def _format_download_output(self, result: DownloadResult, output_format: str = "markdown") -> str:
+    def _format_download_output(
+        self, result: DownloadResult, output_format: str = "markdown"
+    ) -> str:
         """Format download results for LLM consumption.
 
         Args:
@@ -183,7 +191,9 @@ class DownloadCollection(ActionCollection):
 
             if result.file_size_bytes is not None:
                 size_mb = result.file_size_bytes / (1024 * 1024)
-                output_parts.append(f"**File Size:** {result.file_size_bytes:,} bytes ({size_mb:.2f} MB)")
+                output_parts.append(
+                    f"**File Size:** {result.file_size_bytes:,} bytes ({size_mb:.2f} MB)"
+                )
 
             if result.error_message:
                 output_parts.extend(
@@ -203,7 +213,9 @@ class DownloadCollection(ActionCollection):
         start_time = time.monotonic()
 
         try:
-            with requests.get(url, headers=headers, stream=True, timeout=timeout) as response:
+            with requests.get(
+                url, headers=headers, stream=True, timeout=timeout
+            ) as response:
                 # Check for Content-Length to fail early for large files
                 content_length_str = response.headers.get("Content-Length")
                 if content_length_str and int(content_length_str) > self.max_file_size:
@@ -252,7 +264,9 @@ class DownloadCollection(ActionCollection):
         except Exception as e:
             error_type = e.__class__.__name__
             error_message = f"An unexpected error occurred: {e}"
-            self.logger.error(f"Unexpected download error for {url}:\n{traceback.format_exc()}")
+            self.logger.error(
+                f"Unexpected download error for {url}:\n{traceback.format_exc()}"
+            )
 
         return DownloadResult(
             url=url,
@@ -267,11 +281,22 @@ class DownloadCollection(ActionCollection):
     async def mcp_download_file(
         self,
         url: str = Field(description="URL of the file to download."),
-        output_path: str = Field(description="File path to save the download. Can be relative to the workspace."),
-        timeout: int | None = Field(default=None, description="Download timeout in seconds."),
-        overwrite: bool = Field(default=False, description="Overwrite the file if it already exists."),
-        headers: dict[str, str] | None = Field(default=None, description="Custom headers for the download request."),
-        output_format: str = Field(default="markdown", description="Output format ('markdown', 'json', 'text')."),
+        output_path: str = Field(
+            description="File path to save the download. Can be relative to the workspace."
+        ),
+        timeout: int | None = Field(
+            default=None, description="Download timeout in seconds."
+        ),
+        overwrite: bool = Field(
+            default=False, description="Overwrite the file if it already exists."
+        ),
+        headers: dict[str, str] | None = Field(
+            default=None, description="Custom headers for the download request."
+        ),
+        output_format: str = Field(
+            default="markdown",
+            description="Output format ('markdown', 'json', 'text').",
+        ),
     ) -> ActionResponse:
         """Download a file from a URL with options for timeout, overwrite, and custom headers."""
         self.logger.info(f"Initiating download for URL: {url}")
@@ -282,7 +307,9 @@ class DownloadCollection(ActionCollection):
 
         final_path = self._resolve_output_path(output_path)
         if not final_path:
-            return ActionResponse(success=False, message="Invalid output path specified.")
+            return ActionResponse(
+                success=False, message="Invalid output path specified."
+            )
 
         if final_path.exists() and not overwrite:
             message = f"File already exists at '{final_path}'. Use overwrite=True to replace it."
@@ -296,7 +323,9 @@ class DownloadCollection(ActionCollection):
 
         # Execute download
         download_timeout = timeout if timeout is not None else self.default_timeout
-        result = await self._download_file_async(url, final_path, download_timeout, request_headers)
+        result = await self._download_file_async(
+            url, final_path, download_timeout, request_headers
+        )
 
         # Format and return response
         formatted_output = self._format_download_output(result, output_format)

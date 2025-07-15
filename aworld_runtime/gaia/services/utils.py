@@ -116,7 +116,9 @@ async def get_file_from_source_async(
         try:
             async with aiohttp.ClientSession() as session:
                 # Make a HEAD request first to check content length
-                async with session.head(source, timeout=timeout, allow_redirects=True) as head_response:
+                async with session.head(
+                    source, timeout=timeout, allow_redirects=True
+                ) as head_response:
                     head_response.raise_for_status()
 
                     content_length = head_response.headers.get("content-length")
@@ -132,14 +134,18 @@ async def get_file_from_source_async(
 
                     content = await response.read()
                     if len(content) > max_size_bytes:
-                        raise ValueError(f"File size exceeds maximum allowed size ({max_size_mb} MB)")
+                        raise ValueError(
+                            f"File size exceeds maximum allowed size ({max_size_mb} MB)"
+                        )
 
             # Create temporary file
             parsed_url = urlparse(source)
             filename = os.path.basename(parsed_url.path) or "downloaded_file"
 
             suffix = Path(filename).suffix or ".tmp"
-            async with aiofiles.tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+            async with aiofiles.tempfile.NamedTemporaryFile(
+                delete=False, suffix=suffix
+            ) as temp_file:
                 await temp_file.write(content)
                 temp_path = temp_file.name
 
@@ -148,7 +154,9 @@ async def get_file_from_source_async(
             return temp_path, mime_type, content
 
         except aiohttp.ClientError as e:
-            raise aiohttp.ClientError(f"Failed to download file from URL: {e}: {traceback.format_exc()}") from e
+            raise aiohttp.ClientError(
+                f"Failed to download file from URL: {e}: {traceback.format_exc()}"
+            ) from e
         except Exception as e:
             raise OSError(f"Error processing URL: {e}: {traceback.format_exc()}") from e
 
@@ -171,7 +179,9 @@ async def get_file_from_source_async(
             async with aiofiles.open(file_path, "rb") as f:
                 content = await f.read()
         except Exception as e:
-            raise OSError(f"Cannot read file {source}: {e}: {traceback.format_exc()}") from e
+            raise OSError(
+                f"Cannot read file {source}: {e}: {traceback.format_exc()}"
+            ) from e
 
         mime_type = await asyncio.to_thread(get_mime_type, str(file_path))
 
@@ -226,7 +236,9 @@ def get_file_from_source(
             content = b""
             for chunk in response.iter_content(chunk_size=8192):
                 if len(content) + len(chunk) > max_size_bytes:
-                    raise ValueError(f"File size exceeds maximum allowed size ({max_size_mb} MB)")
+                    raise ValueError(
+                        f"File size exceeds maximum allowed size ({max_size_mb} MB)"
+                    )
                 content += chunk
 
             # Create temporary file
@@ -245,7 +257,9 @@ def get_file_from_source(
             return temp_path, mime_type, content
 
         except requests.RequestException as e:
-            raise requests.RequestException(f"Failed to download file from URL: {e}: {traceback.format_exc()}") from e
+            raise requests.RequestException(
+                f"Failed to download file from URL: {e}: {traceback.format_exc()}"
+            ) from e
         except Exception as e:
             raise OSError(f"Error processing URL: {e}: {traceback.format_exc()}") from e
 
@@ -272,7 +286,9 @@ def get_file_from_source(
             with open(file_path, "rb") as f:
                 content = f.read()
         except Exception as e:
-            raise OSError(f"Cannot read file {source}: {e}: {traceback.format_exc()}") from e
+            raise OSError(
+                f"Cannot read file {source}: {e}: {traceback.format_exc()}"
+            ) from e
 
         # Get MIME type
         mime_type = get_mime_type(str(file_path))
@@ -326,7 +342,8 @@ async def call_openai_vision_model(
     try:
         # Initialize OpenAI client
         client = AsyncOpenAI(
-            api_key=api_key or os.getenv("LLM_API_KEY"), base_url=base_url or os.getenv("LLM_BASE_URL")
+            api_key=api_key or os.getenv("LLM_API_KEY"),
+            base_url=base_url or os.getenv("LLM_BASE_URL"),
         )
 
         # Make async call using asyncio.to_thread to avoid blocking
@@ -352,7 +369,9 @@ async def call_openai_vision_model(
         return ModelResponse(content=content, model=response.model, usage=usage)
 
     except Exception as e:
-        raise LLMExecption(f"OpenAI API call failed: {e}: {traceback.format_exc()}") from e
+        raise LLMExecption(
+            f"OpenAI API call failed: {e}: {traceback.format_exc()}"
+        ) from e
 
 
 async def call_openai_text_model(
@@ -383,7 +402,8 @@ async def call_openai_text_model(
     try:
         # Initialize OpenAI client
         client = AsyncOpenAI(
-            api_key=api_key or os.getenv("LLM_API_KEY"), base_url=base_url or os.getenv("LLM_BASE_URL")
+            api_key=api_key or os.getenv("LLM_API_KEY"),
+            base_url=base_url or os.getenv("LLM_BASE_URL"),
         )
 
         # Make async call using asyncio.to_thread to avoid blocking
@@ -409,4 +429,6 @@ async def call_openai_text_model(
         return ModelResponse(content=content, model=response.model, usage=usage)
 
     except Exception as e:
-        raise LLMExecption(f"OpenAI API call failed: {e}: {traceback.format_exc()}") from e
+        raise LLMExecption(
+            f"OpenAI API call failed: {e}: {traceback.format_exc()}"
+        ) from e

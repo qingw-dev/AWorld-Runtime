@@ -119,7 +119,9 @@ class ArxivCollection(ActionCollection):
         }
 
         self._color_log("ArXiv service initialized", Color.green, "debug")
-        self._color_log(f"Downloads directory: {self._downloads_dir}", Color.blue, "debug")
+        self._color_log(
+            f"Downloads directory: {self._downloads_dir}", Color.blue, "debug"
+        )
 
     def _format_paper_result(self, paper: arxiv.Result) -> PaperResult:
         """Convert arxiv.Result to structured PaperResult.
@@ -145,7 +147,9 @@ class ArxivCollection(ActionCollection):
             comment=paper.comment,
         )
 
-    def _format_search_results(self, results: list[PaperResult], output_format: str = "markdown") -> str:
+    def _format_search_results(
+        self, results: list[PaperResult], output_format: str = "markdown"
+    ) -> str:
         """Format paper search results for LLM consumption.
 
         Args:
@@ -184,7 +188,9 @@ class ArxivCollection(ActionCollection):
             return "\n".join(output_parts)
 
         else:  # markdown (default)
-            output_parts = [f"# ArXiv Search Results\n\nFound **{len(results)}** papers:\n"]
+            output_parts = [
+                f"# ArXiv Search Results\n\nFound **{len(results)}** papers:\n"
+            ]
 
             for i, paper in enumerate(results, 1):
                 authors_str = ", ".join(paper.authors[:3])
@@ -200,7 +206,9 @@ class ArxivCollection(ActionCollection):
                         f"**Published:** {paper.published[:10]}",
                         f"**Categories:** {', '.join(paper.categories)}",
                         f"**ArXiv ID:** `{arxiv_id}`",
-                        f"**PDF:** [Download]({paper.pdf_url})" if paper.pdf_url else "",
+                        f"**PDF:** [Download]({paper.pdf_url})"
+                        if paper.pdf_url
+                        else "",
                         "",
                         f"**Abstract:** {paper.summary}",
                         "",
@@ -211,7 +219,9 @@ class ArxivCollection(ActionCollection):
 
             return "\n".join(output_parts)
 
-    def _format_paper_details(self, paper: PaperResult, output_format: str = "markdown") -> str:
+    def _format_paper_details(
+        self, paper: PaperResult, output_format: str = "markdown"
+    ) -> str:
         """Format detailed paper information for LLM consumption.
 
         Args:
@@ -256,10 +266,16 @@ class ArxivCollection(ActionCollection):
                 f"**Primary Category:** {paper.primary_category}",
                 f"**All Categories:** {', '.join(paper.categories)}",
                 f"**ArXiv ID:** `{arxiv_id}`",
-                f"**PDF:** [Download]({paper.pdf_url})" if paper.pdf_url else "**PDF:** N/A",
+                f"**PDF:** [Download]({paper.pdf_url})"
+                if paper.pdf_url
+                else "**PDF:** N/A",
                 f"**DOI:** {paper.doi}" if paper.doi else "**DOI:** N/A",
-                f"**Journal Reference:** {paper.journal_ref}" if paper.journal_ref else "**Journal Reference:** N/A",
-                f"**Comment:** {paper.comment}" if paper.comment else "**Comment:** N/A",
+                f"**Journal Reference:** {paper.journal_ref}"
+                if paper.journal_ref
+                else "**Journal Reference:** N/A",
+                f"**Comment:** {paper.comment}"
+                if paper.comment
+                else "**Comment:** N/A",
                 "",
                 "## Abstract",
                 "",
@@ -272,11 +288,20 @@ class ArxivCollection(ActionCollection):
         self,
         query: str = Field(description="Search query (keywords, title, author, etc.)"),
         sort_by: str = Field(
-            default="relevance", description="Sort by: 'relevance', 'lastUpdatedDate', 'submittedDate'"
+            default="relevance",
+            description="Sort by: 'relevance', 'lastUpdatedDate', 'submittedDate'",
         ),
-        sort_order: str = Field(default="descending", description="Sort order: 'ascending' or 'descending'"),
-        category: str | None = Field(default=None, description="Filter by ArXiv category (e.g., 'cs.AI', 'math.CO')"),
-        output_format: str = Field(default="markdown", description="Output format: 'markdown', 'json', or 'text'"),
+        sort_order: str = Field(
+            default="descending", description="Sort order: 'ascending' or 'descending'"
+        ),
+        category: str | None = Field(
+            default=None,
+            description="Filter by ArXiv category (e.g., 'cs.AI', 'math.CO')",
+        ),
+        output_format: str = Field(
+            default="markdown",
+            description="Output format: 'markdown', 'json', or 'text'",
+        ),
     ) -> ActionResponse:
         """Search ArXiv papers with flexible criteria.
 
@@ -332,7 +357,10 @@ class ArxivCollection(ActionCollection):
 
             # Perform search
             search = arxiv.Search(
-                query=search_query, max_results=300000, sort_by=sort_criterion, sort_order=sort_order_enum
+                query=search_query,
+                max_results=300000,
+                sort_by=sort_criterion,
+                sort_order=sort_order_enum,
             )
 
             # Execute search and collect results
@@ -355,9 +383,13 @@ class ArxivCollection(ActionCollection):
                 execution_time=execution_time,
             )
 
-            self._color_log(f"✅ Found {len(results)} papers in {execution_time:.2f}s", Color.green)
+            self._color_log(
+                f"✅ Found {len(results)} papers in {execution_time:.2f}s", Color.green
+            )
 
-            return ActionResponse(success=True, message=formatted_output, metadata=metadata.model_dump())
+            return ActionResponse(
+                success=True, message=formatted_output, metadata=metadata.model_dump()
+            )
 
         except Exception as e:
             error_msg = f"Failed to search ArXiv papers: {str(e)}"
@@ -366,13 +398,20 @@ class ArxivCollection(ActionCollection):
             return ActionResponse(
                 success=False,
                 message=error_msg,
-                metadata=ArxivMetadata(operation="search_papers", query=query, error_type="search_error").model_dump(),
+                metadata=ArxivMetadata(
+                    operation="search_papers", query=query, error_type="search_error"
+                ).model_dump(),
             )
 
     async def mcp_get_paper_details(
         self,
-        paper_id: str = Field(description="ArXiv paper ID (e.g., '2301.07041' or 'arxiv:2301.07041')"),
-        output_format: str = Field(default="markdown", description="Output format: 'markdown', 'json', or 'text'"),
+        paper_id: str = Field(
+            description="ArXiv paper ID (e.g., '2301.07041' or 'arxiv:2301.07041')"
+        ),
+        output_format: str = Field(
+            default="markdown",
+            description="Output format: 'markdown', 'json', or 'text'",
+        ),
     ) -> ActionResponse:
         """Get detailed information about a specific ArXiv paper.
 
@@ -406,7 +445,9 @@ class ArxivCollection(ActionCollection):
                     success=False,
                     message=f"Paper not found: {clean_id}",
                     metadata=ArxivMetadata(
-                        operation="get_paper_details", paper_id=clean_id, error_type="paper_not_found"
+                        operation="get_paper_details",
+                        paper_id=clean_id,
+                        error_type="paper_not_found",
                     ).model_dump(),
                 )
 
@@ -417,11 +458,19 @@ class ArxivCollection(ActionCollection):
             formatted_output = self._format_paper_details(paper_result, output_format)
 
             # Create metadata
-            metadata = ArxivMetadata(operation="get_paper_details", paper_id=clean_id, execution_time=execution_time)
+            metadata = ArxivMetadata(
+                operation="get_paper_details",
+                paper_id=clean_id,
+                execution_time=execution_time,
+            )
 
-            self._color_log(f"✅ Retrieved paper details in {execution_time:.2f}s", Color.green)
+            self._color_log(
+                f"✅ Retrieved paper details in {execution_time:.2f}s", Color.green
+            )
 
-            return ActionResponse(success=True, message=formatted_output, metadata=metadata.model_dump())
+            return ActionResponse(
+                success=True, message=formatted_output, metadata=metadata.model_dump()
+            )
 
         except Exception as e:
             error_msg = f"Failed to get paper details: {str(e)}"
@@ -431,15 +480,24 @@ class ArxivCollection(ActionCollection):
                 success=False,
                 message=error_msg,
                 metadata=ArxivMetadata(
-                    operation="get_paper_details", paper_id=paper_id, error_type="retrieval_error"
+                    operation="get_paper_details",
+                    paper_id=paper_id,
+                    error_type="retrieval_error",
                 ).model_dump(),
             )
 
     async def mcp_download_paper(
         self,
-        paper_id: str = Field(description="ArXiv paper ID (e.g., '2301.07041' or 'arxiv:2301.07041')"),
-        extract_text: bool = Field(default=True, description="Whether to extract text content from PDF"),
-        output_format: str = Field(default="markdown", description="Output format: 'markdown', 'json', or 'text'"),
+        paper_id: str = Field(
+            description="ArXiv paper ID (e.g., '2301.07041' or 'arxiv:2301.07041')"
+        ),
+        extract_text: bool = Field(
+            default=True, description="Whether to extract text content from PDF"
+        ),
+        output_format: str = Field(
+            default="markdown",
+            description="Output format: 'markdown', 'json', or 'text'",
+        ),
     ) -> ActionResponse:
         """Download ArXiv paper PDF and optionally extract text content.
 
@@ -476,7 +534,9 @@ class ArxivCollection(ActionCollection):
                     success=False,
                     message=f"Paper not found: {clean_id}",
                     metadata=ArxivMetadata(
-                        operation="download_paper", paper_id=clean_id, error_type="paper_not_found"
+                        operation="download_paper",
+                        paper_id=clean_id,
+                        error_type="paper_not_found",
                     ).model_dump(),
                 )
 
@@ -521,7 +581,9 @@ class ArxivCollection(ActionCollection):
                 ]
 
                 if extract_text:
-                    output_parts.append("\nNote: Text extraction requires additional PDF processing libraries")
+                    output_parts.append(
+                        "\nNote: Text extraction requires additional PDF processing libraries"
+                    )
 
                 formatted_output = "\n".join(output_parts)
 
@@ -559,9 +621,14 @@ class ArxivCollection(ActionCollection):
                 execution_time=execution_time,
             )
 
-            self._color_log(f"✅ Downloaded paper in {execution_time:.2f}s ({file_size:,} bytes)", Color.green)
+            self._color_log(
+                f"✅ Downloaded paper in {execution_time:.2f}s ({file_size:,} bytes)",
+                Color.green,
+            )
 
-            return ActionResponse(success=True, message=formatted_output, metadata=metadata.model_dump())
+            return ActionResponse(
+                success=True, message=formatted_output, metadata=metadata.model_dump()
+            )
 
         except Exception as e:
             error_msg = f"Failed to download paper: {str(e)}"
@@ -571,13 +638,18 @@ class ArxivCollection(ActionCollection):
                 success=False,
                 message=error_msg,
                 metadata=ArxivMetadata(
-                    operation="download_paper", paper_id=paper_id, error_type="download_error"
+                    operation="download_paper",
+                    paper_id=paper_id,
+                    error_type="download_error",
                 ).model_dump(),
             )
 
     async def mcp_get_categories(
         self,
-        output_format: str = Field(default="markdown", description="Output format: 'markdown', 'json', or 'text'"),
+        output_format: str = Field(
+            default="markdown",
+            description="Output format: 'markdown', 'json', or 'text'",
+        ),
     ) -> ActionResponse:
         """Get available ArXiv subject categories.
 
@@ -625,9 +697,13 @@ class ArxivCollection(ActionCollection):
 
                 formatted_output = "\n".join(output_parts)
 
-            metadata = ArxivMetadata(operation="get_categories", total_results=len(self.subject_categories))
+            metadata = ArxivMetadata(
+                operation="get_categories", total_results=len(self.subject_categories)
+            )
 
-            return ActionResponse(success=True, message=formatted_output, metadata=metadata.model_dump())
+            return ActionResponse(
+                success=True, message=formatted_output, metadata=metadata.model_dump()
+            )
 
         except Exception as e:
             error_msg = f"Failed to get categories: {str(e)}"
@@ -636,7 +712,9 @@ class ArxivCollection(ActionCollection):
             return ActionResponse(
                 success=False,
                 message=error_msg,
-                metadata=ArxivMetadata(operation="get_categories", error_type="internal_error").model_dump(),
+                metadata=ArxivMetadata(
+                    operation="get_categories", error_type="internal_error"
+                ).model_dump(),
             )
 
     async def mcp_get_arxiv_capabilities(self) -> ActionResponse:
@@ -701,7 +779,9 @@ class ArxivCollection(ActionCollection):
         - **Server Respect:** {capabilities["rate_limiting"]["respectful_usage"]}
         """
 
-        return ActionResponse(success=True, message=formatted_info, metadata=capabilities)
+        return ActionResponse(
+            success=True, message=formatted_info, metadata=capabilities
+        )
 
 
 # Default arguments for testing

@@ -26,14 +26,28 @@ class ImageMetadata(BaseModel):
     absolute_path: str = Field(description="Absolute path to the image file")
     width: int | None = Field(default=None, description="Image width in pixels")
     height: int | None = Field(default=None, description="Image height in pixels")
-    mode: str | None = Field(default=None, description="Image color mode (RGB, RGBA, L, etc.)")
-    format: str | None = Field(default=None, description="Image format (JPEG, PNG, etc.)")
-    has_transparency: bool = Field(default=False, description="Whether image has transparency")
-    processing_time: float = Field(description="Time taken to process the image in seconds", exclude=True)
-    output_files: list[str] = Field(default_factory=list, description="Paths to generated output files")
-    extracted_text: str | None = Field(default=None, description="Text extracted via OCR")
+    mode: str | None = Field(
+        default=None, description="Image color mode (RGB, RGBA, L, etc.)"
+    )
+    format: str | None = Field(
+        default=None, description="Image format (JPEG, PNG, etc.)"
+    )
+    has_transparency: bool = Field(
+        default=False, description="Whether image has transparency"
+    )
+    processing_time: float = Field(
+        description="Time taken to process the image in seconds", exclude=True
+    )
+    output_files: list[str] = Field(
+        default_factory=list, description="Paths to generated output files"
+    )
+    extracted_text: str | None = Field(
+        default=None, description="Text extracted via OCR"
+    )
     analysis_result: str | None = Field(default=None, description="AI analysis result")
-    compression_ratio: float | None = Field(default=None, description="Compression ratio if optimized")
+    compression_ratio: float | None = Field(
+        default=None, description="Compression ratio if optimized"
+    )
     output_format: str = Field(description="Format of the processed output")
 
 
@@ -73,7 +87,9 @@ class ImageCollection(ActionCollection):
         # )
 
         self._color_log("Image Processing Service initialized", Color.green, "debug")
-        self._color_log(f"Image output directory: {self._image_output_dir}", Color.blue, "debug")
+        self._color_log(
+            f"Image output directory: {self._image_output_dir}", Color.blue, "debug"
+        )
 
     async def _load_image(self, file_path: Path) -> Image.Image:
         """Load image from file path.
@@ -89,7 +105,9 @@ class ImageCollection(ActionCollection):
         except Exception as e:
             raise RuntimeError(f"Failed to load image {file_path}: {str(e)}") from e
 
-    def _get_image_metadata(self, image: Image.Image, file_path: Path) -> dict[str, Any]:
+    def _get_image_metadata(
+        self, image: Image.Image, file_path: Path
+    ) -> dict[str, Any]:
         """Extract metadata from PIL Image object.
 
         Args:
@@ -104,10 +122,13 @@ class ImageCollection(ActionCollection):
             "height": image.height,
             "mode": image.mode,
             "format": image.format or file_path.suffix.upper().lstrip("."),
-            "has_transparency": image.mode in ("RGBA", "LA") or "transparency" in image.info,
+            "has_transparency": image.mode in ("RGBA", "LA")
+            or "transparency" in image.info,
         }
 
-    def _optimize_image(self, image: Image.Image, max_size: tuple[int, int] | None = None) -> Image.Image:
+    def _optimize_image(
+        self, image: Image.Image, max_size: tuple[int, int] | None = None
+    ) -> Image.Image:
         """Optimize image for size and quality.
 
         Args:
@@ -189,12 +210,18 @@ class ImageCollection(ActionCollection):
         if output_format.upper() == "JPEG":
             if image.mode in ("RGBA", "LA"):
                 background = Image.new("RGB", image.size, (255, 255, 255))
-                background.paste(image, mask=image.split()[-1] if image.mode == "RGBA" else None)
+                background.paste(
+                    image, mask=image.split()[-1] if image.mode == "RGBA" else None
+                )
                 image = background
             elif image.mode == "P":
                 image = image.convert("RGB")
 
-        image.save(buffer, format=output_format, quality=85 if output_format.upper() == "JPEG" else None)
+        image.save(
+            buffer,
+            format=output_format,
+            quality=85 if output_format.upper() == "JPEG" else None,
+        )
 
         mime_type = f"image/{output_format.lower()}"
         img_base64 = base64.b64encode(buffer.getvalue()).decode()
@@ -204,8 +231,12 @@ class ImageCollection(ActionCollection):
     async def mcp_extract_text_ocr(
         self,
         file_path: str = Field(description="Path to the image file for OCR"),
-        language: str = Field(default="eng", description="OCR language code (e.g., 'eng', 'spa', 'fra')"),
-        preprocess: bool = Field(default=True, description="Whether to preprocess image for better OCR"),
+        language: str = Field(
+            default="eng", description="OCR language code (e.g., 'eng', 'spa', 'fra')"
+        ),
+        preprocess: bool = Field(
+            default=True, description="Whether to preprocess image for better OCR"
+        ),
     ) -> ActionResponse:
         """Extract text from images using Optical Character Recognition (OCR).
 
@@ -293,9 +324,16 @@ class ImageCollection(ActionCollection):
                     " The image may not contain readable text or OCR preprocessing may be needed."
                 )
 
-            self._color_log(f"OCR completed: {word_count} words extracted in {processing_time:.2f}s", Color.green)
+            self._color_log(
+                f"OCR completed: {word_count} words extracted in {processing_time:.2f}s",
+                Color.green,
+            )
 
-            return ActionResponse(success=True, message=result_message, metadata=image_metadata.model_dump())
+            return ActionResponse(
+                success=True,
+                message=result_message,
+                metadata=image_metadata.model_dump(),
+            )
 
         except Exception as e:
             self.logger.error(f"OCR failed: {str(e)}: {traceback.format_exc()}")
@@ -378,12 +416,20 @@ class ImageCollection(ActionCollection):
                 f"- Processing time: {processing_time:.2f}s"
             )
 
-            self._color_log(f"AI analysis completed in {processing_time:.2f}s", Color.green)
+            self._color_log(
+                f"AI analysis completed in {processing_time:.2f}s", Color.green
+            )
 
-            return ActionResponse(success=True, message=result_message, metadata=image_metadata.model_dump())
+            return ActionResponse(
+                success=True,
+                message=result_message,
+                metadata=image_metadata.model_dump(),
+            )
 
         except Exception as e:
-            self.logger.error(f"AI image analysis failed: {str(e)}: {traceback.format_exc()}")
+            self.logger.error(
+                f"AI image analysis failed: {str(e)}: {traceback.format_exc()}"
+            )
             return ActionResponse(
                 success=False,
                 message=f"AI image analysis failed: {str(e)}",
@@ -440,7 +486,9 @@ class ImageCollection(ActionCollection):
             )
 
             # Calculate additional info
-            aspect_ratio = metadata["width"] / metadata["height"] if metadata["height"] > 0 else 0
+            aspect_ratio = (
+                metadata["width"] / metadata["height"] if metadata["height"] > 0 else 0
+            )
             megapixels = (metadata["width"] * metadata["height"]) / 1_000_000
 
             result_message = (
@@ -455,12 +503,20 @@ class ImageCollection(ActionCollection):
                 f"File Type: {file_path.suffix.upper()}"
             )
 
-            self._color_log(f"Metadata extraction completed in {processing_time:.2f}s", Color.green)
+            self._color_log(
+                f"Metadata extraction completed in {processing_time:.2f}s", Color.green
+            )
 
-            return ActionResponse(success=True, message=result_message, metadata=image_metadata.model_dump())
+            return ActionResponse(
+                success=True,
+                message=result_message,
+                metadata=image_metadata.model_dump(),
+            )
 
         except Exception as e:
-            self.logger.error(f"Metadata extraction failed: {str(e)}: {traceback.format_exc()}")
+            self.logger.error(
+                f"Metadata extraction failed: {str(e)}: {traceback.format_exc()}"
+            )
             return ActionResponse(
                 success=False,
                 message=f"Metadata extraction failed: {str(e)}",

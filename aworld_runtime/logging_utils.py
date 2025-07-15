@@ -26,7 +26,9 @@ class Color:
     strikethrough = "\033[09m"
 
 
-def setup_logger(logger_name: str, output_folder_path: str = "./logs", file_name: str = "main.log") -> logging.Logger:
+def setup_logger(
+    logger_name: str, output_folder_path: str = "./logs", file_name: str = "main.log"
+) -> logging.Logger:
     """
     Set up a logger with the given name that writes to the specified file.
     Returns a configured logger instance.
@@ -34,7 +36,9 @@ def setup_logger(logger_name: str, output_folder_path: str = "./logs", file_name
     output_path = Path(output_folder_path)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
 
     log_file = output_path / file_name
 
@@ -57,7 +61,9 @@ def setup_logger(logger_name: str, output_folder_path: str = "./logs", file_name
     return logger
 
 
-def color_log(logger: logging.Logger, value: str, color: Color | None, level: str | None = None):
+def color_log(
+    logger: logging.Logger, value: str, color: Color | None, level: str | None = None
+):
     # Default to 'info' level if none specified
     if level is None:
         level = "info"

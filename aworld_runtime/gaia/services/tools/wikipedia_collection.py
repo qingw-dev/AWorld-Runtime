@@ -111,7 +111,9 @@ class WikipediaCollection(ActionCollection):
 
         self._color_log("Wikipedia service initialized", Color.green, "debug")
 
-    def _format_search_results(self, results: list[WikipediaSearchResult], output_format: str = "markdown") -> str:
+    def _format_search_results(
+        self, results: list[WikipediaSearchResult], output_format: str = "markdown"
+    ) -> str:
         """Format search results for LLM consumption.
 
         Args:
@@ -143,7 +145,9 @@ class WikipediaCollection(ActionCollection):
             if not results:
                 return "No Wikipedia search results found."
 
-            output_parts = [f"# Wikipedia Search Results\n\nFound {len(results)} results:\n"]
+            output_parts = [
+                f"# Wikipedia Search Results\n\nFound {len(results)} results:\n"
+            ]
 
             for i, result in enumerate(results, 1):
                 output_parts.append(f"## {i}. [{result.title}]({result.url})")
@@ -153,7 +157,10 @@ class WikipediaCollection(ActionCollection):
             return "\n".join(output_parts)
 
     def _format_article(
-        self, article: WikipediaArticle, output_format: str = "markdown", include_full_content: bool = False
+        self,
+        article: WikipediaArticle,
+        output_format: str = "markdown",
+        include_full_content: bool = False,
     ) -> str:
         """Format article for LLM consumption.
 
@@ -216,7 +223,9 @@ class WikipediaCollection(ActionCollection):
                 for i, link in enumerate(article.links[:20], 1):
                     output_parts.append(f"{i}. {link}")
                 if len(article.links) > 20:
-                    output_parts.append(f"\n... and {len(article.links) - 20} more links")
+                    output_parts.append(
+                        f"\n... and {len(article.links) - 20} more links"
+                    )
 
             if article.requested_date:
                 output_parts.append("\n## Historical Version Information")
@@ -233,8 +242,12 @@ class WikipediaCollection(ActionCollection):
         self,
         query: str = Field(..., description="The search query string"),
         limit: int = Field(10, description="Maximum number of results to return"),
-        language: str = Field("en", description="Language code for Wikipedia (e.g., 'en', 'es', 'fr')"),
-        output_format: str = Field("markdown", description="Output format: 'markdown', 'json', or 'text'"),
+        language: str = Field(
+            "en", description="Language code for Wikipedia (e.g., 'en', 'es', 'fr')"
+        ),
+        output_format: str = Field(
+            "markdown", description="Output format: 'markdown', 'json', or 'text'"
+        ),
     ) -> ActionResponse:
         """Search Wikipedia for articles matching the query.
 
@@ -284,31 +297,44 @@ class WikipediaCollection(ActionCollection):
             if limit > self.max_search_results:
                 limit = self.max_search_results
 
-            self._color_log(f"🔍 Searching Wikipedia for: {query} (language: {language})", Color.cyan)
+            self._color_log(
+                f"🔍 Searching Wikipedia for: {query} (language: {language})",
+                Color.cyan,
+            )
 
             # Search Wikipedia
-            search_results = await asyncio.to_thread(wikipedia.search, query, results=limit)
+            search_results = await asyncio.to_thread(
+                wikipedia.search, query, results=limit
+            )
 
             # Format results
             formatted_results = []
             for title in search_results:
                 try:
                     # Get a summary to use as a snippet
-                    summary = await asyncio.to_thread(wikipedia.summary, title, sentences=1, auto_suggest=False)
+                    summary = await asyncio.to_thread(
+                        wikipedia.summary, title, sentences=1, auto_suggest=False
+                    )
                     # Create URL
                     url = f"https://{language}.wikipedia.org/wiki/{title.replace(' ', '_')}"
 
-                    result = WikipediaSearchResult(title=title, snippet=summary, url=url)
+                    result = WikipediaSearchResult(
+                        title=title, snippet=summary, url=url
+                    )
                     formatted_results.append(result)
                 except Exception as e:
-                    self.logger.warning(f"Error getting details for '{title}': {str(e)}")
+                    self.logger.warning(
+                        f"Error getting details for '{title}': {str(e)}"
+                    )
                     # Still include the result, but without a snippet
                     url = f"https://{language}.wikipedia.org/wiki/{title.replace(' ', '_')}"
                     result = WikipediaSearchResult(title=title, url=url)
                     formatted_results.append(result)
 
             # Format output for LLM
-            formatted_output = self._format_search_results(formatted_results, output_format)
+            formatted_output = self._format_search_results(
+                formatted_results, output_format
+            )
 
             # Calculate execution time
             execution_time = time.time() - start_time
@@ -322,7 +348,10 @@ class WikipediaCollection(ActionCollection):
                 execution_time=execution_time,
             )
 
-            self._color_log(f"✅ Found {len(formatted_results)} results for query: {query}", Color.green)
+            self._color_log(
+                f"✅ Found {len(formatted_results)} results for query: {query}",
+                Color.green,
+            )
 
             return ActionResponse(
                 success=True,
@@ -349,11 +378,19 @@ class WikipediaCollection(ActionCollection):
     async def mcp_get_article_content(
         self,
         title: str = Field(..., description="Title of the Wikipedia article"),
-        auto_suggest: bool = Field(False, description="Whether to use Wikipedia's auto-suggest feature"),
+        auto_suggest: bool = Field(
+            False, description="Whether to use Wikipedia's auto-suggest feature"
+        ),
         redirect: bool = Field(True, description="Whether to follow redirects"),
-        language: str = Field("en", description="Language code for Wikipedia (e.g., 'en', 'es', 'fr')"),
-        output_format: str = Field("markdown", description="Output format: 'markdown', 'json', or 'text'"),
-        include_full_content: bool = Field(True, description="Whether to include the full article content"),
+        language: str = Field(
+            "en", description="Language code for Wikipedia (e.g., 'en', 'es', 'fr')"
+        ),
+        output_format: str = Field(
+            "markdown", description="Output format: 'markdown', 'json', or 'text'"
+        ),
+        include_full_content: bool = Field(
+            True, description="Whether to include the full article content"
+        ),
     ) -> ActionResponse:
         """Retrieve the full content of a Wikipedia article.
 
@@ -406,10 +443,15 @@ class WikipediaCollection(ActionCollection):
                     ).model_dump(),
                 )
 
-            self._color_log(f"📖 Retrieving Wikipedia article: {title} (language: {language})", Color.cyan)
+            self._color_log(
+                f"📖 Retrieving Wikipedia article: {title} (language: {language})",
+                Color.cyan,
+            )
 
             # Get the page
-            page = await asyncio.to_thread(wikipedia.page, title, auto_suggest=auto_suggest, redirect=redirect)
+            page = await asyncio.to_thread(
+                wikipedia.page, title, auto_suggest=auto_suggest, redirect=redirect
+            )
 
             # Create article object
             article = WikipediaArticle(
@@ -422,11 +464,16 @@ class WikipediaCollection(ActionCollection):
                 categories=page.categories,
                 links=page.links,
                 references=page.references,
-                sections=[{"title": section, "content": page.section(section)} for section in page.sections],
+                sections=[
+                    {"title": section, "content": page.section(section)}
+                    for section in page.sections
+                ],
             )
 
             # Format output for LLM
-            formatted_output = self._format_article(article, output_format, include_full_content)
+            formatted_output = self._format_article(
+                article, output_format, include_full_content
+            )
 
             # Calculate execution time
             execution_time = time.time() - start_time
@@ -452,7 +499,9 @@ class WikipediaCollection(ActionCollection):
 
         except Exception as e:
             error_msg = f"Failed to retrieve Wikipedia article: {str(e)}"
-            self.logger.error(f"Wikipedia content retrieval error: {traceback.format_exc()}")
+            self.logger.error(
+                f"Wikipedia content retrieval error: {traceback.format_exc()}"
+            )
 
             return ActionResponse(
                 success=False,
@@ -469,11 +518,19 @@ class WikipediaCollection(ActionCollection):
     async def mcp_get_article_summary(
         self,
         title: str = Field(..., description="Title of the Wikipedia article"),
-        sentences: int = Field(5, description="Number of sentences to return in the summary"),
-        auto_suggest: bool = Field(False, description="Whether to use Wikipedia's auto-suggest feature"),
+        sentences: int = Field(
+            5, description="Number of sentences to return in the summary"
+        ),
+        auto_suggest: bool = Field(
+            False, description="Whether to use Wikipedia's auto-suggest feature"
+        ),
         redirect: bool = Field(True, description="Whether to follow redirects"),
-        language: str = Field("en", description="Language code for Wikipedia (e.g., 'en', 'es', 'fr')"),
-        output_format: str = Field("markdown", description="Output format: 'markdown', 'json', or 'text'"),
+        language: str = Field(
+            "en", description="Language code for Wikipedia (e.g., 'en', 'es', 'fr')"
+        ),
+        output_format: str = Field(
+            "markdown", description="Output format: 'markdown', 'json', or 'text'"
+        ),
     ) -> ActionResponse:
         """Get a summary of a Wikipedia article.
 
@@ -527,11 +584,17 @@ class WikipediaCollection(ActionCollection):
                     ).model_dump(),
                 )
 
-            self._color_log(f"📝 Retrieving summary for: {title} (language: {language})", Color.cyan)
+            self._color_log(
+                f"📝 Retrieving summary for: {title} (language: {language})", Color.cyan
+            )
 
             # Get the summary
             summary = await asyncio.to_thread(
-                wikipedia.summary, title, sentences=sentences, auto_suggest=auto_suggest, redirect=redirect
+                wikipedia.summary,
+                title,
+                sentences=sentences,
+                auto_suggest=auto_suggest,
+                redirect=redirect,
             )
 
             # Get the URL
@@ -546,7 +609,9 @@ class WikipediaCollection(ActionCollection):
             )
 
             # Format output for LLM
-            formatted_output = self._format_article(article, output_format, include_full_content=False)
+            formatted_output = self._format_article(
+                article, output_format, include_full_content=False
+            )
 
             # Calculate execution time
             execution_time = time.time() - start_time
@@ -570,7 +635,9 @@ class WikipediaCollection(ActionCollection):
 
         except Exception as e:
             error_msg = f"Failed to retrieve Wikipedia summary: {str(e)}"
-            self.logger.error(f"Wikipedia summary retrieval error: {traceback.format_exc()}")
+            self.logger.error(
+                f"Wikipedia summary retrieval error: {traceback.format_exc()}"
+            )
 
             return ActionResponse(
                 success=False,
@@ -587,8 +654,12 @@ class WikipediaCollection(ActionCollection):
     async def mcp_get_article_categories(
         self,
         title: str = Field(..., description="Title of the Wikipedia article"),
-        language: str = Field("en", description="Language code for Wikipedia (e.g., 'en', 'es', 'fr')"),
-        output_format: str = Field("markdown", description="Output format: 'markdown', 'json', or 'text'"),
+        language: str = Field(
+            "en", description="Language code for Wikipedia (e.g., 'en', 'es', 'fr')"
+        ),
+        output_format: str = Field(
+            "markdown", description="Output format: 'markdown', 'json', or 'text'"
+        ),
     ) -> ActionResponse:
         """Get categories for a Wikipedia article.
 
@@ -631,19 +702,26 @@ class WikipediaCollection(ActionCollection):
                 )
 
             self._color_log(
-                f"🏷️ Retrieving categories for Wikipedia article: {title} (language: {language})", Color.cyan
+                f"🏷️ Retrieving categories for Wikipedia article: {title} (language: {language})",
+                Color.cyan,
             )
 
             # Get the page
-            page = await asyncio.to_thread(wikipedia.page, title, auto_suggest=True, redirect=True)
+            page = await asyncio.to_thread(
+                wikipedia.page, title, auto_suggest=True, redirect=True
+            )
 
             # Format output for LLM
             if output_format == "json":
                 formatted_output = json.dumps(page.categories, indent=2)
             elif output_format == "text":
-                formatted_output = f"Categories for {title}:\n" + "\n".join(f"- {cat}" for cat in page.categories)
+                formatted_output = f"Categories for {title}:\n" + "\n".join(
+                    f"- {cat}" for cat in page.categories
+                )
             else:  # markdown
-                formatted_output = f"# Categories for {title}\n\n" + "\n".join(f"- {cat}" for cat in page.categories)
+                formatted_output = f"# Categories for {title}\n\n" + "\n".join(
+                    f"- {cat}" for cat in page.categories
+                )
 
             # Calculate execution time
             execution_time = time.time() - start_time
@@ -658,7 +736,10 @@ class WikipediaCollection(ActionCollection):
                 article_id=page.pageid,
             )
 
-            self._color_log(f"✅ Retrieved {len(page.categories)} categories for: {title}", Color.green)
+            self._color_log(
+                f"✅ Retrieved {len(page.categories)} categories for: {title}",
+                Color.green,
+            )
 
             return ActionResponse(
                 success=True,
@@ -668,7 +749,9 @@ class WikipediaCollection(ActionCollection):
 
         except Exception as e:
             error_msg = f"Failed to retrieve Wikipedia article categories: {str(e)}"
-            self.logger.error(f"Wikipedia categories retrieval error: {traceback.format_exc()}")
+            self.logger.error(
+                f"Wikipedia categories retrieval error: {traceback.format_exc()}"
+            )
 
             return ActionResponse(
                 success=False,
@@ -685,8 +768,12 @@ class WikipediaCollection(ActionCollection):
     async def mcp_get_article_links(
         self,
         title: str = Field(..., description="Title of the Wikipedia article"),
-        language: str = Field("en", description="Language code for Wikipedia (e.g., 'en', 'es', 'fr')"),
-        output_format: str = Field("markdown", description="Output format: 'markdown', 'json', or 'text'"),
+        language: str = Field(
+            "en", description="Language code for Wikipedia (e.g., 'en', 'es', 'fr')"
+        ),
+        output_format: str = Field(
+            "markdown", description="Output format: 'markdown', 'json', or 'text'"
+        ),
     ) -> ActionResponse:
         """Get links from a Wikipedia article.
 
@@ -728,10 +815,15 @@ class WikipediaCollection(ActionCollection):
                     ).model_dump(),
                 )
 
-            self._color_log(f"🔗 Retrieving links from Wikipedia article: {title} (language: {language})", Color.cyan)
+            self._color_log(
+                f"🔗 Retrieving links from Wikipedia article: {title} (language: {language})",
+                Color.cyan,
+            )
 
             # Get the page
-            page = await asyncio.to_thread(wikipedia.page, title, auto_suggest=True, redirect=True)
+            page = await asyncio.to_thread(
+                wikipedia.page, title, auto_suggest=True, redirect=True
+            )
 
             # Format results
             formatted_results = []
@@ -741,11 +833,15 @@ class WikipediaCollection(ActionCollection):
                     result = WikipediaSearchResult(title=link_title, url=url)
                     formatted_results.append(result)
                 except Exception as e:
-                    self.logger.warning(f"Error formatting link '{link_title}': {str(e)}")
+                    self.logger.warning(
+                        f"Error formatting link '{link_title}': {str(e)}"
+                    )
 
             # Format output for LLM
             if output_format == "json":
-                formatted_output = json.dumps([result.model_dump() for result in formatted_results], indent=2)
+                formatted_output = json.dumps(
+                    [result.model_dump() for result in formatted_results], indent=2
+                )
             elif output_format == "text":
                 formatted_output = f"Links from {title}:\n" + "\n".join(
                     f"- {result.title}" for result in formatted_results
@@ -757,7 +853,9 @@ class WikipediaCollection(ActionCollection):
                 for i, result in enumerate(formatted_results[:50], 1):
                     formatted_output += f"{i}. [{result.title}]({result.url})\n"
                 if len(formatted_results) > 50:
-                    formatted_output += f"\n... and {len(formatted_results) - 50} more links"
+                    formatted_output += (
+                        f"\n... and {len(formatted_results) - 50} more links"
+                    )
 
             # Calculate execution time
             execution_time = time.time() - start_time
@@ -772,7 +870,10 @@ class WikipediaCollection(ActionCollection):
                 article_id=page.pageid,
             )
 
-            self._color_log(f"✅ Retrieved {len(formatted_results)} links from: {title}", Color.green)
+            self._color_log(
+                f"✅ Retrieved {len(formatted_results)} links from: {title}",
+                Color.green,
+            )
 
             return ActionResponse(
                 success=True,
@@ -782,7 +883,9 @@ class WikipediaCollection(ActionCollection):
 
         except Exception as e:
             error_msg = f"Failed to retrieve Wikipedia article links: {str(e)}"
-            self.logger.error(f"Wikipedia links retrieval error: {traceback.format_exc()}")
+            self.logger.error(
+                f"Wikipedia links retrieval error: {traceback.format_exc()}"
+            )
 
             return ActionResponse(
                 success=False,
@@ -801,14 +904,20 @@ class WikipediaCollection(ActionCollection):
         title: str = Field(..., description="Title of the Wikipedia article"),
         date: str = Field(
             ...,
-            description=("Target date in YYYY/MM/DD format. If day is omitted, last day of month will be used"),
+            description=(
+                "Target date in YYYY/MM/DD format. If day is omitted, last day of month will be used"
+            ),
         ),
-        language: str = Field("en", description="Language code for Wikipedia (e.g., 'en', 'es', 'fr')"),
+        language: str = Field(
+            "en", description="Language code for Wikipedia (e.g., 'en', 'es', 'fr')"
+        ),
         auto_suggest: bool = Field(
             False,
             description="Whether to use Wikipedia's auto-suggest feature and handle redirects",
         ),
-        output_format: str = Field("markdown", description="Output format: 'markdown', 'json', or 'text'"),
+        output_format: str = Field(
+            "markdown", description="Output format: 'markdown', 'json', or 'text'"
+        ),
     ) -> ActionResponse:
         """Get historical version of a Wikipedia page closest to the specified date.
 
@@ -862,7 +971,8 @@ class WikipediaCollection(ActionCollection):
                 )
 
             self._color_log(
-                f"📅 Retrieving historical version of Wikipedia article: {title} for date: {date}", Color.cyan
+                f"📅 Retrieving historical version of Wikipedia article: {title} for date: {date}",
+                Color.cyan,
             )
 
             # First try to find the correct page title using search and auto-suggest
@@ -870,14 +980,21 @@ class WikipediaCollection(ActionCollection):
             if auto_suggest:
                 try:
                     # Search for the page and get the actual title
-                    search_results = await asyncio.to_thread(wikipedia.search, title, results=1)
+                    search_results = await asyncio.to_thread(
+                        wikipedia.search, title, results=1
+                    )
                     if search_results:
                         # Get the page to handle redirects and get the canonical title
                         page = await asyncio.to_thread(
-                            wikipedia.page, search_results[0], auto_suggest=True, redirect=True
+                            wikipedia.page,
+                            search_results[0],
+                            auto_suggest=True,
+                            redirect=True,
                         )
                         actual_title = page.title
-                        self.logger.info(f"Found matching page: {actual_title} for query: {title}")
+                        self.logger.info(
+                            f"Found matching page: {actual_title} for query: {title}"
+                        )
                 except Exception as e:
                     self.logger.warning(f"Auto-suggest failed for {title}: {str(e)}")
 
@@ -885,7 +1002,11 @@ class WikipediaCollection(ActionCollection):
             date_parts = date.split("/")
             year = int(date_parts[0])
             month = int(date_parts[1])
-            day = int(date_parts[2]) if len(date_parts) > 2 else calendar.monthrange(year, month)[1]
+            day = (
+                int(date_parts[2])
+                if len(date_parts) > 2
+                else calendar.monthrange(year, month)[1]
+            )
 
             target_date = datetime(year, month, day)
 
@@ -911,7 +1032,9 @@ class WikipediaCollection(ActionCollection):
             page = next(iter(data["query"]["pages"].values()))
             if "revisions" in page:
                 revision = page["revisions"][0]
-                actual_date = datetime.fromisoformat(revision["timestamp"].replace("Z", "+00:00"))
+                actual_date = datetime.fromisoformat(
+                    revision["timestamp"].replace("Z", "+00:00")
+                )
 
                 # Create URL for this version
                 page_id = page["pageid"]
@@ -940,7 +1063,9 @@ class WikipediaCollection(ActionCollection):
                 )
 
                 # Format output for LLM
-                formatted_output = self._format_article(article, output_format, include_full_content=True)
+                formatted_output = self._format_article(
+                    article, output_format, include_full_content=True
+                )
 
                 # Calculate execution time
                 execution_time = time.time() - start_time
@@ -958,7 +1083,10 @@ class WikipediaCollection(ActionCollection):
                     actual_date=actual_date.strftime("%Y/%m/%d"),
                 )
 
-                self._color_log(f"✅ Retrieved historical version from {actual_date.strftime('%Y/%m/%d')}", Color.green)
+                self._color_log(
+                    f"✅ Retrieved historical version from {actual_date.strftime('%Y/%m/%d')}",
+                    Color.green,
+                )
 
                 return ActionResponse(
                     success=True,
@@ -984,7 +1112,9 @@ class WikipediaCollection(ActionCollection):
 
         except Exception as e:
             error_msg = f"Failed to retrieve Wikipedia article history: {str(e)}"
-            self.logger.error(f"Wikipedia history retrieval error: {traceback.format_exc()}")
+            self.logger.error(
+                f"Wikipedia history retrieval error: {traceback.format_exc()}"
+            )
 
             return ActionResponse(
                 success=False,
@@ -1042,7 +1172,9 @@ class WikipediaCollection(ActionCollection):
         - **Default Summary Sentences:** {capabilities["configuration"]["default_summary_sentences"]}
         """
 
-        return ActionResponse(success=True, message=formatted_info, metadata=capabilities)
+        return ActionResponse(
+            success=True, message=formatted_info, metadata=capabilities
+        )
 
 
 # Default arguments for testing

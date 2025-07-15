@@ -22,7 +22,9 @@ def get_request_id(request: Request) -> str:
 
 @openrouter_router.post("/completions")
 async def chat_completions(
-    chat_request: ChatCompletionRequest, request: Request, request_id: str = Depends(get_request_id)
+    chat_request: ChatCompletionRequest,
+    request: Request,
+    request_id: str = Depends(get_request_id),
 ):
     """Chat completions endpoint.
 
@@ -97,7 +99,9 @@ async def list_models(request: Request, request_id: str = Depends(get_request_id
 
         if not success:
             logger.error(f"[{request_id}] Failed to fetch models")
-            raise HTTPException(status_code=502, detail="Failed to fetch models from OpenRouter API")
+            raise HTTPException(
+                status_code=502, detail="Failed to fetch models from OpenRouter API"
+            )
 
         logger.info(f"[{request_id}] Models fetched successfully")
         return response.model_dump()

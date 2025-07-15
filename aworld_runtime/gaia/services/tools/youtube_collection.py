@@ -26,7 +26,8 @@ from ..action_collection import ActionArguments, ActionCollection, ActionRespons
 
 # Default driver path for Chrome WebDriver
 _DEFAULT_DRIVER_PATH = os.environ.get(
-    "CHROME_DRIVER_PATH", str(Path("~/Downloads/chromedriver-mac-arm64/chromedriver").expanduser())
+    "CHROME_DRIVER_PATH",
+    str(Path("~/Downloads/chromedriver-mac-arm64/chromedriver").expanduser()),
 )
 
 
@@ -84,7 +85,9 @@ class YouTubeCollection(ActionCollection):
 
         self._color_log("YouTube service initialized", Color.green, "debug")
 
-    def _format_transcript_output(self, result: TranscriptResult, format_type: str = "markdown") -> str:
+    def _format_transcript_output(
+        self, result: TranscriptResult, format_type: str = "markdown"
+    ) -> str:
         """Format transcript results for LLM consumption.
 
         Args:
@@ -132,7 +135,9 @@ class YouTubeCollection(ActionCollection):
 
             return "\n".join(output)
 
-    def _format_download_output(self, result: YoutubeDownloadResults, format_type: str = "markdown") -> str:
+    def _format_download_output(
+        self, result: YoutubeDownloadResults, format_type: str = "markdown"
+    ) -> str:
         """Format download results for LLM consumption.
 
         Args:
@@ -235,17 +240,24 @@ class YouTubeCollection(ActionCollection):
 
             # Wait for download to complete
             cnt = 0
-            while len(os.listdir(output_dir)) == 0 or os.listdir(output_dir)[0].split(".")[-1] == "crdownload":
+            while (
+                len(os.listdir(output_dir)) == 0
+                or os.listdir(output_dir)[0].split(".")[-1] == "crdownload"
+            ):
                 time.sleep(3)
                 cnt += 3
                 if cnt >= timeout:
-                    self._color_log(f"Download timeout after {timeout} seconds", Color.yellow)
+                    self._color_log(
+                        f"Download timeout after {timeout} seconds", Color.yellow
+                    )
                     break
 
             self._color_log("Download process completed", Color.green)
 
         except Exception as e:
-            self._color_log(f"Error during YouTube content download: {str(e)}", Color.red)
+            self._color_log(
+                f"Error during YouTube content download: {str(e)}", Color.red
+            )
             raise
         finally:
             # Close browser
@@ -282,9 +294,12 @@ class YouTubeCollection(ActionCollection):
     async def mcp_download_youtube_video(
         self,
         url: str = Field(description="The URL of YouTube video to download."),
-        timeout: int = Field(180, description="Download timeout in seconds (default: 180)."),
+        timeout: int = Field(
+            180, description="Download timeout in seconds (default: 180)."
+        ),
         output_format: str = Field(
-            "markdown", description="Output format: 'markdown', 'json', or 'text' (default: markdown)."
+            "markdown",
+            description="Output format: 'markdown', 'json', or 'text' (default: markdown).",
         ),
     ) -> ActionResponse:
         """Download a YouTube video from URL and save it to the local filesystem.
@@ -308,7 +323,9 @@ class YouTubeCollection(ActionCollection):
         try:
             # Validate URL
             if not url.startswith(("http://", "https://")):
-                raise ValueError("Invalid URL format. URL must start with http:// or https://")
+                raise ValueError(
+                    "Invalid URL format. URL must start with http:// or https://"
+                )
 
             if not ("youtube.com" in url or "youtu.be" in url):
                 raise ValueError("URL must be a valid YouTube URL")
@@ -342,7 +359,10 @@ class YouTubeCollection(ActionCollection):
                     success=True,
                     error=None,
                 )
-                self._color_log(f"Found {video_id} already downloaded in: {existing_file}", Color.green)
+                self._color_log(
+                    f"Found {video_id} already downloaded in: {existing_file}",
+                    Color.green,
+                )
 
                 # Format output for LLM
                 message = self._format_download_output(result, output_format)
@@ -374,7 +394,9 @@ class YouTubeCollection(ActionCollection):
             download_file = downloaded_files[0]
             file_size = download_file.stat().st_size
 
-            self._color_log(f"File downloaded successfully to {download_file}", Color.green)
+            self._color_log(
+                f"File downloaded successfully to {download_file}", Color.green
+            )
 
             # Create result
             result = YoutubeDownloadResults(
@@ -424,13 +446,18 @@ class YouTubeCollection(ActionCollection):
 
     async def mcp_extract_youtube_transcript(
         self,
-        video_id: str = Field(description="The YouTube video ID or URL to extract transcript from."),
-        language_code: str = Field("en", description="Language code for the transcript (default: en)."),
+        video_id: str = Field(
+            description="The YouTube video ID or URL to extract transcript from."
+        ),
+        language_code: str = Field(
+            "en", description="Language code for the transcript (default: en)."
+        ),
         translate_to_language: str | None = Field(
             None, description="Translate transcript to this language code if provided."
         ),
         output_format: str = Field(
-            "markdown", description="Output format: 'markdown', 'json', or 'text' (default: markdown)."
+            "markdown",
+            description="Output format: 'markdown', 'json', or 'text' (default: markdown).",
         ),
     ) -> ActionResponse:
         """Extract transcript from a YouTube video given its video ID or URL.
@@ -460,7 +487,9 @@ class YouTubeCollection(ActionCollection):
                 elif "youtu.be/" in video_id:
                     video_id = video_id.split("youtu.be/")[-1].split("?")[0]
 
-            self._color_log(f"Extracting transcript for video ID: {video_id}", Color.blue)
+            self._color_log(
+                f"Extracting transcript for video ID: {video_id}", Color.blue
+            )
 
             # Get transcript in specified language
             if translate_to_language:
@@ -491,9 +520,14 @@ class YouTubeCollection(ActionCollection):
                 except Exception:
                     transcript_data = None
 
-            result = TranscriptResult(video_id=video_id, transcript=transcript_data, success=True, error=None)
+            result = TranscriptResult(
+                video_id=video_id, transcript=transcript_data, success=True, error=None
+            )
 
-            self._color_log(f"Successfully extracted transcript for video ID: {video_id}", Color.green)
+            self._color_log(
+                f"Successfully extracted transcript for video ID: {video_id}",
+                Color.green,
+            )
 
             # Format output for LLM
             message = self._format_transcript_output(result, output_format)
@@ -512,7 +546,9 @@ class YouTubeCollection(ActionCollection):
 
         except Exception as e:
             error_msg = str(e)
-            self._color_log(f"Transcript extraction error: {traceback.format_exc()}", Color.red)
+            self._color_log(
+                f"Transcript extraction error: {traceback.format_exc()}", Color.red
+            )
 
             # Format error for LLM
             message = f"Failed to extract transcript: {error_msg}"
